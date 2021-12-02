@@ -1,0 +1,584 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 55;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D618BB1827441E3A0021DF9F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D618BAE927441E390021DF9F /* Assets.xcassets */; };
+		D618BB1A27441E3A0021DF9F /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAEB27441E390021DF9F /* AppDependencies.swift */; };
+		D618BB1B27441E3A0021DF9F /* IEXTokenDecorator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAED27441E390021DF9F /* IEXTokenDecorator.swift */; };
+		D618BB1C27441E3A0021DF9F /* ImageDataResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAEE27441E390021DF9F /* ImageDataResource.swift */; };
+		D618BB1D27441E3A0021DF9F /* UITableViewCellExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAEF27441E390021DF9F /* UITableViewCellExtensions.swift */; };
+		D618BB1E27441E3A0021DF9F /* StandardFetchableViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAF027441E390021DF9F /* StandardFetchableViews.swift */; };
+		D618BB1F27441E3A0021DF9F /* BackgroundPulseState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAF127441E390021DF9F /* BackgroundPulseState.swift */; };
+		D618BB2127441E3A0021DF9F /* StockSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAF627441E390021DF9F /* StockSearchView.swift */; };
+		D618BB2227441E3A0021DF9F /* StockSearchViewSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAF727441E390021DF9F /* StockSearchViewSource.swift */; };
+		D618BB2327441E3A0021DF9F /* StockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAF927441E390021DF9F /* StockDetailView.swift */; };
+		D618BB2427441E3A0021DF9F /* StockDetailViewSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAFA27441E390021DF9F /* StockDetailViewSource.swift */; };
+		D618BB2527441E3A0021DF9F /* WatchlistViewSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAFC27441E390021DF9F /* WatchlistViewSource.swift */; };
+		D618BB2627441E3A0021DF9F /* WatchlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAFD27441E390021DF9F /* WatchlistView.swift */; };
+		D618BB2827441E3A0021DF9F /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BAFF27441E390021DF9F /* SceneDelegate.swift */; };
+		D618BB2927441E3A0021DF9F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D618BB0127441E390021DF9F /* LaunchScreen.storyboard */; };
+		D618BB2A27441E3A0021DF9F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D618BB0327441E390021DF9F /* Main.storyboard */; };
+		D618BB2B27441E3A0021DF9F /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0527441E390021DF9F /* MainViewController.swift */; };
+		D618BB2C27441E3A0021DF9F /* StockQuoteSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0727441E3A0021DF9F /* StockQuoteSource.swift */; };
+		D618BB2D27441E3A0021DF9F /* SelectedSymbolSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0827441E3A0021DF9F /* SelectedSymbolSource.swift */; };
+		D618BB2E27441E3A0021DF9F /* StockSymbolsSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0927441E3A0021DF9F /* StockSymbolsSource.swift */; };
+		D618BB2F27441E3A0021DF9F /* CompanyInfoSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0A27441E3A0021DF9F /* CompanyInfoSource.swift */; };
+		D618BB3027441E3A0021DF9F /* CompanyLogoSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0B27441E3A0021DF9F /* CompanyLogoSource.swift */; };
+		D618BB3127441E3A0021DF9F /* WatchlistSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0C27441E3A0021DF9F /* WatchlistSource.swift */; };
+		D618BB3227441E3A0021DF9F /* StockSearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB0F27441E3A0021DF9F /* StockSearchViewController.swift */; };
+		D618BB3327441E3A0021DF9F /* StockSearchViewControllerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB1027441E3A0021DF9F /* StockSearchViewControllerSource.swift */; };
+		D618BB3427441E3A0021DF9F /* StockDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB1227441E3A0021DF9F /* StockDetailViewController.swift */; };
+		D618BB3527441E3A0021DF9F /* StockDetailViewControllerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB1327441E3A0021DF9F /* StockDetailViewControllerSource.swift */; };
+		D618BB3627441E3A0021DF9F /* WatchlistViewControllerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB1527441E3A0021DF9F /* WatchlistViewControllerSource.swift */; };
+		D618BB3727441E3A0021DF9F /* WatchlistViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB1627441E3A0021DF9F /* WatchlistViewController.swift */; };
+		D618BB3827441E3A0021DF9F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618BB1727441E3A0021DF9F /* AppDelegate.swift */; };
+		D6253A002742FC3B004E44E8 /* SourceArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = D62539FF2742FC3B004E44E8 /* SourceArchitecture */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		D618BAE927441E390021DF9F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = StockWatch/Assets.xcassets; sourceTree = "<group>"; };
+		D618BAEA27441E390021DF9F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = StockWatch/Info.plist; sourceTree = "<group>"; };
+		D618BAEB27441E390021DF9F /* AppDependencies.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppDependencies.swift; path = StockWatch/AppDependencies.swift; sourceTree = "<group>"; };
+		D618BAED27441E390021DF9F /* IEXTokenDecorator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IEXTokenDecorator.swift; sourceTree = "<group>"; };
+		D618BAEE27441E390021DF9F /* ImageDataResource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageDataResource.swift; sourceTree = "<group>"; };
+		D618BAEF27441E390021DF9F /* UITableViewCellExtensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UITableViewCellExtensions.swift; sourceTree = "<group>"; };
+		D618BAF027441E390021DF9F /* StandardFetchableViews.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StandardFetchableViews.swift; sourceTree = "<group>"; };
+		D618BAF127441E390021DF9F /* BackgroundPulseState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackgroundPulseState.swift; sourceTree = "<group>"; };
+		D618BAF627441E390021DF9F /* StockSearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockSearchView.swift; sourceTree = "<group>"; };
+		D618BAF727441E390021DF9F /* StockSearchViewSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockSearchViewSource.swift; sourceTree = "<group>"; };
+		D618BAF927441E390021DF9F /* StockDetailView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockDetailView.swift; sourceTree = "<group>"; };
+		D618BAFA27441E390021DF9F /* StockDetailViewSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockDetailViewSource.swift; sourceTree = "<group>"; };
+		D618BAFC27441E390021DF9F /* WatchlistViewSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WatchlistViewSource.swift; sourceTree = "<group>"; };
+		D618BAFD27441E390021DF9F /* WatchlistView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WatchlistView.swift; sourceTree = "<group>"; };
+		D618BAFF27441E390021DF9F /* SceneDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = StockWatch/SceneDelegate.swift; sourceTree = "<group>"; };
+		D618BB0227441E390021DF9F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		D618BB0427441E390021DF9F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Main.storyboard; sourceTree = "<group>"; };
+		D618BB0527441E390021DF9F /* MainViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MainViewController.swift; path = StockWatch/MainViewController.swift; sourceTree = "<group>"; };
+		D618BB0727441E3A0021DF9F /* StockQuoteSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockQuoteSource.swift; sourceTree = "<group>"; };
+		D618BB0827441E3A0021DF9F /* SelectedSymbolSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SelectedSymbolSource.swift; sourceTree = "<group>"; };
+		D618BB0927441E3A0021DF9F /* StockSymbolsSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockSymbolsSource.swift; sourceTree = "<group>"; };
+		D618BB0A27441E3A0021DF9F /* CompanyInfoSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CompanyInfoSource.swift; sourceTree = "<group>"; };
+		D618BB0B27441E3A0021DF9F /* CompanyLogoSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CompanyLogoSource.swift; sourceTree = "<group>"; };
+		D618BB0C27441E3A0021DF9F /* WatchlistSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WatchlistSource.swift; sourceTree = "<group>"; };
+		D618BB0F27441E3A0021DF9F /* StockSearchViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockSearchViewController.swift; sourceTree = "<group>"; };
+		D618BB1027441E3A0021DF9F /* StockSearchViewControllerSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockSearchViewControllerSource.swift; sourceTree = "<group>"; };
+		D618BB1227441E3A0021DF9F /* StockDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockDetailViewController.swift; sourceTree = "<group>"; };
+		D618BB1327441E3A0021DF9F /* StockDetailViewControllerSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StockDetailViewControllerSource.swift; sourceTree = "<group>"; };
+		D618BB1527441E3A0021DF9F /* WatchlistViewControllerSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WatchlistViewControllerSource.swift; sourceTree = "<group>"; };
+		D618BB1627441E3A0021DF9F /* WatchlistViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WatchlistViewController.swift; sourceTree = "<group>"; };
+		D618BB1727441E3A0021DF9F /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = StockWatch/AppDelegate.swift; sourceTree = "<group>"; };
+		D62539E42742FB04004E44E8 /* StockWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StockWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D62539FD2742FBD1004E44E8 /* SourceArchitecture */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SourceArchitecture; path = ..; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D62539E12742FB04004E44E8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D6253A002742FC3B004E44E8 /* SourceArchitecture in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D618BAEC27441E390021DF9F /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				D618BAED27441E390021DF9F /* IEXTokenDecorator.swift */,
+				D618BAEE27441E390021DF9F /* ImageDataResource.swift */,
+				D618BAEF27441E390021DF9F /* UITableViewCellExtensions.swift */,
+				D618BAF027441E390021DF9F /* StandardFetchableViews.swift */,
+				D618BAF127441E390021DF9F /* BackgroundPulseState.swift */,
+			);
+			name = Common;
+			path = StockWatch/Common;
+			sourceTree = "<group>";
+		};
+		D618BAF427441E390021DF9F /* SwiftUIScreens */ = {
+			isa = PBXGroup;
+			children = (
+				D618BAF527441E390021DF9F /* StockSearch */,
+				D618BAF827441E390021DF9F /* StockDetail */,
+				D618BAFB27441E390021DF9F /* Watchlist */,
+			);
+			name = SwiftUIScreens;
+			path = StockWatch/SwiftUIScreens;
+			sourceTree = "<group>";
+		};
+		D618BAF527441E390021DF9F /* StockSearch */ = {
+			isa = PBXGroup;
+			children = (
+				D618BAF627441E390021DF9F /* StockSearchView.swift */,
+				D618BAF727441E390021DF9F /* StockSearchViewSource.swift */,
+			);
+			path = StockSearch;
+			sourceTree = "<group>";
+		};
+		D618BAF827441E390021DF9F /* StockDetail */ = {
+			isa = PBXGroup;
+			children = (
+				D618BAF927441E390021DF9F /* StockDetailView.swift */,
+				D618BAFA27441E390021DF9F /* StockDetailViewSource.swift */,
+			);
+			path = StockDetail;
+			sourceTree = "<group>";
+		};
+		D618BAFB27441E390021DF9F /* Watchlist */ = {
+			isa = PBXGroup;
+			children = (
+				D618BAFC27441E390021DF9F /* WatchlistViewSource.swift */,
+				D618BAFD27441E390021DF9F /* WatchlistView.swift */,
+			);
+			path = Watchlist;
+			sourceTree = "<group>";
+		};
+		D618BB0027441E390021DF9F /* Base.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB0127441E390021DF9F /* LaunchScreen.storyboard */,
+				D618BB0327441E390021DF9F /* Main.storyboard */,
+			);
+			name = Base.lproj;
+			path = StockWatch/Base.lproj;
+			sourceTree = "<group>";
+		};
+		D618BB0627441E3A0021DF9F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB0727441E3A0021DF9F /* StockQuoteSource.swift */,
+				D618BB0827441E3A0021DF9F /* SelectedSymbolSource.swift */,
+				D618BB0927441E3A0021DF9F /* StockSymbolsSource.swift */,
+				D618BB0A27441E3A0021DF9F /* CompanyInfoSource.swift */,
+				D618BB0B27441E3A0021DF9F /* CompanyLogoSource.swift */,
+				D618BB0C27441E3A0021DF9F /* WatchlistSource.swift */,
+			);
+			name = Models;
+			path = StockWatch/Models;
+			sourceTree = "<group>";
+		};
+		D618BB0D27441E3A0021DF9F /* UIKitScreens */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB0E27441E3A0021DF9F /* StockSearch */,
+				D618BB1127441E3A0021DF9F /* StockDetail */,
+				D618BB1427441E3A0021DF9F /* Watchlist */,
+			);
+			name = UIKitScreens;
+			path = StockWatch/UIKitScreens;
+			sourceTree = "<group>";
+		};
+		D618BB0E27441E3A0021DF9F /* StockSearch */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB0F27441E3A0021DF9F /* StockSearchViewController.swift */,
+				D618BB1027441E3A0021DF9F /* StockSearchViewControllerSource.swift */,
+			);
+			path = StockSearch;
+			sourceTree = "<group>";
+		};
+		D618BB1127441E3A0021DF9F /* StockDetail */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB1227441E3A0021DF9F /* StockDetailViewController.swift */,
+				D618BB1327441E3A0021DF9F /* StockDetailViewControllerSource.swift */,
+			);
+			path = StockDetail;
+			sourceTree = "<group>";
+		};
+		D618BB1427441E3A0021DF9F /* Watchlist */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB1527441E3A0021DF9F /* WatchlistViewControllerSource.swift */,
+				D618BB1627441E3A0021DF9F /* WatchlistViewController.swift */,
+			);
+			path = Watchlist;
+			sourceTree = "<group>";
+		};
+		D62539DB2742FB04004E44E8 = {
+			isa = PBXGroup;
+			children = (
+				D62539FB2742FB25004E44E8 /* Packages */,
+				D62539E62742FB04004E44E8 /* StockWatch */,
+				D62539E52742FB04004E44E8 /* Products */,
+				D62539FE2742FC23004E44E8 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		D62539E52742FB04004E44E8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D62539E42742FB04004E44E8 /* StockWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D62539E62742FB04004E44E8 /* StockWatch */ = {
+			isa = PBXGroup;
+			children = (
+				D618BB0527441E390021DF9F /* MainViewController.swift */,
+				D618BB0627441E3A0021DF9F /* Models */,
+				D618BB1727441E3A0021DF9F /* AppDelegate.swift */,
+				D618BAEB27441E390021DF9F /* AppDependencies.swift */,
+				D618BAE927441E390021DF9F /* Assets.xcassets */,
+				D618BB0027441E390021DF9F /* Base.lproj */,
+				D618BAEC27441E390021DF9F /* Common */,
+				D618BAEA27441E390021DF9F /* Info.plist */,
+				D618BAFF27441E390021DF9F /* SceneDelegate.swift */,
+				D618BAF427441E390021DF9F /* SwiftUIScreens */,
+				D618BB0D27441E3A0021DF9F /* UIKitScreens */,
+			);
+			path = StockWatch;
+			sourceTree = "<group>";
+		};
+		D62539FB2742FB25004E44E8 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				D62539FD2742FBD1004E44E8 /* SourceArchitecture */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		D62539FE2742FC23004E44E8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D62539E32742FB04004E44E8 /* StockWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D62539F82742FB06004E44E8 /* Build configuration list for PBXNativeTarget "StockWatch" */;
+			buildPhases = (
+				D62539E02742FB04004E44E8 /* Sources */,
+				D62539E12742FB04004E44E8 /* Frameworks */,
+				D62539E22742FB04004E44E8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StockWatch;
+			packageProductDependencies = (
+				D62539FF2742FC3B004E44E8 /* SourceArchitecture */,
+			);
+			productName = StockWatch;
+			productReference = D62539E42742FB04004E44E8 /* StockWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D62539DC2742FB04004E44E8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1310;
+				LastUpgradeCheck = 1310;
+				TargetAttributes = {
+					D62539E32742FB04004E44E8 = {
+						CreatedOnToolsVersion = 13.1;
+					};
+				};
+			};
+			buildConfigurationList = D62539DF2742FB04004E44E8 /* Build configuration list for PBXProject "StockWatch" */;
+			compatibilityVersion = "Xcode 13.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D62539DB2742FB04004E44E8;
+			productRefGroup = D62539E52742FB04004E44E8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D62539E32742FB04004E44E8 /* StockWatch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D62539E22742FB04004E44E8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D618BB2A27441E3A0021DF9F /* Main.storyboard in Resources */,
+				D618BB1827441E3A0021DF9F /* Assets.xcassets in Resources */,
+				D618BB2927441E3A0021DF9F /* LaunchScreen.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D62539E02742FB04004E44E8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D618BB2C27441E3A0021DF9F /* StockQuoteSource.swift in Sources */,
+				D618BB3227441E3A0021DF9F /* StockSearchViewController.swift in Sources */,
+				D618BB1B27441E3A0021DF9F /* IEXTokenDecorator.swift in Sources */,
+				D618BB3527441E3A0021DF9F /* StockDetailViewControllerSource.swift in Sources */,
+				D618BB2F27441E3A0021DF9F /* CompanyInfoSource.swift in Sources */,
+				D618BB2D27441E3A0021DF9F /* SelectedSymbolSource.swift in Sources */,
+				D618BB3827441E3A0021DF9F /* AppDelegate.swift in Sources */,
+				D618BB1A27441E3A0021DF9F /* AppDependencies.swift in Sources */,
+				D618BB2327441E3A0021DF9F /* StockDetailView.swift in Sources */,
+				D618BB2B27441E3A0021DF9F /* MainViewController.swift in Sources */,
+				D618BB3727441E3A0021DF9F /* WatchlistViewController.swift in Sources */,
+				D618BB2227441E3A0021DF9F /* StockSearchViewSource.swift in Sources */,
+				D618BB3027441E3A0021DF9F /* CompanyLogoSource.swift in Sources */,
+				D618BB1D27441E3A0021DF9F /* UITableViewCellExtensions.swift in Sources */,
+				D618BB2E27441E3A0021DF9F /* StockSymbolsSource.swift in Sources */,
+				D618BB2427441E3A0021DF9F /* StockDetailViewSource.swift in Sources */,
+				D618BB3427441E3A0021DF9F /* StockDetailViewController.swift in Sources */,
+				D618BB1E27441E3A0021DF9F /* StandardFetchableViews.swift in Sources */,
+				D618BB2127441E3A0021DF9F /* StockSearchView.swift in Sources */,
+				D618BB3327441E3A0021DF9F /* StockSearchViewControllerSource.swift in Sources */,
+				D618BB2827441E3A0021DF9F /* SceneDelegate.swift in Sources */,
+				D618BB1C27441E3A0021DF9F /* ImageDataResource.swift in Sources */,
+				D618BB3627441E3A0021DF9F /* WatchlistViewControllerSource.swift in Sources */,
+				D618BB1F27441E3A0021DF9F /* BackgroundPulseState.swift in Sources */,
+				D618BB2627441E3A0021DF9F /* WatchlistView.swift in Sources */,
+				D618BB3127441E3A0021DF9F /* WatchlistSource.swift in Sources */,
+				D618BB2527441E3A0021DF9F /* WatchlistViewSource.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		D618BB0127441E390021DF9F /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D618BB0227441E390021DF9F /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		D618BB0327441E390021DF9F /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D618BB0427441E390021DF9F /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		D62539F62742FB06004E44E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D62539F72742FB06004E44E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D62539F92742FB06004E44E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RVV37M8LQU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StockWatch/StockWatch/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.danielhall.StockWatch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D62539FA2742FB06004E44E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RVV37M8LQU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StockWatch/StockWatch/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.danielhall.StockWatch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D62539DF2742FB04004E44E8 /* Build configuration list for PBXProject "StockWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D62539F62742FB06004E44E8 /* Debug */,
+				D62539F72742FB06004E44E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D62539F82742FB06004E44E8 /* Build configuration list for PBXNativeTarget "StockWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D62539F92742FB06004E44E8 /* Debug */,
+				D62539FA2742FB06004E44E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D62539FF2742FC3B004E44E8 /* SourceArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SourceArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D62539DC2742FB04004E44E8 /* Project object */;
+}
