@@ -27,20 +27,20 @@ import Foundation
 
 
 public struct Action<Input> {
-    static public func noOp(identifier: String = "NoOp") -> Action<Input> {
-        .init(identifier: identifier) { _ in }
+    static public var noOp: Action<Input> {
+        .init(identifier: "noOp") { _ in }
     }
     public let identifier: String
-    let execute: (Input) throws -> Void
+    private let execute: (Input) throws -> Void
     
     /// Initialize with an arbitrary closure for testing
-    internal init(identifier: String, testClosure: @escaping (Input) throws -> Void) {
+    internal init(identifier: String = "TestClosure", testClosure: @escaping (Input) throws -> Void) {
         self.identifier = identifier
         self.execute = testClosure
     }
     
-    public func map<NewInput>(_ identifier: String, transform: @escaping (NewInput) -> Input) -> Action<NewInput> {
-        .init(identifier: identifier + ".mappedFrom." + self.identifier) {
+    public func map<NewInput>(transform: @escaping (NewInput) -> Input) -> Action<NewInput> {
+        .init(identifier: "MappedAction.From." + self.identifier) {
             try self.execute(transform($0))
         }
     }

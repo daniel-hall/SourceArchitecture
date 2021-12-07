@@ -61,14 +61,14 @@ private final class TestSyncedSource: SyncedSource<SyncedModel>, ActionSource, C
     private let state: MutableState<MutableProperties>
     let cacheIdentifier = "SyncedModel"
     init(dependencies: CacheDependency) {
-        state = .init(mutableProperties: .init()) { state in .one(.init(title: "One", switchToTwo: state.action(\.switchToTwo))) }
+        state = .init(mutableProperties: .init()) { state in .one(.init(title: "One", switchToTwo: state.switchToTwo)) }
         super.init(state, dependencies: dependencies)
     }
     private func switchToOne() {
-        state.setModel(.one(.init(title: "One", switchToTwo: state.action(\.switchToTwo))))
+        state.setModel(.one(.init(title: "One", switchToTwo: state.switchToTwo)))
     }
     private func switchToTwo() {
-        state.setModel(.two(.init(title: "Two", switchToOne: state.action(\.switchToOne))))
+        state.setModel(.two(.init(title: "Two", switchToOne: state.switchToOne)))
     }
 }
 

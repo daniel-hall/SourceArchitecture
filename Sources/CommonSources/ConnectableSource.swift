@@ -40,20 +40,20 @@ final class ConnectableSource<Value>: Source<Connectable<Value>>, ActionSource {
     init(_ sourceClosure: @escaping () -> Source<Value>) {
         self.sourceClosure = sourceClosure
         state = .init(mutableProperties: .init()) { state in
-                .disconnected(.init(connect: state.action(\.connect)))
+                .disconnected(.init(connect: state.connect))
         }
         super.init(state)
     }
     
     private func update() {
         guard let value = state.source?.model else { return }
-        let model = Connectable<Value>.connected(.init(value: value, disconnect: state.action(\.disconnect)))
+        let model = Connectable<Value>.connected(.init(value: value, disconnect: state.disconnect))
         state.setModel(model)
     }
     
     private func disconnect() {
         state.source = nil
-        let model = Connectable<Value>.disconnected(.init(connect: state.action(\.connect)))
+        let model = Connectable<Value>.disconnected(.init(connect: state.connect))
         state.setModel(model)
     }
     

@@ -44,7 +44,7 @@ final class WatchlistViewSource: Source<WatchlistView.RenderedModel> {
                         }
                     }
                 }
-                return WatchlistView.Model(watchedStocks: convertedCellModels, unwatch: watchlistViewControllerModel.unwatch.map("unwatch") { .init(symbol: $0.symbol, name: $0.name) }, select: watchlistViewControllerModel.select.map("select") { .init(symbol: $0.symbol, name: $0.name) })
+                return WatchlistView.Model(watchedStocks: convertedCellModels, unwatch: watchlistViewControllerModel.unwatch.map { .init(symbol: $0.symbol, name: $0.name) }, select: watchlistViewControllerModel.select.map { .init(symbol: $0.symbol, name: $0.name) })
             }
         }
     }

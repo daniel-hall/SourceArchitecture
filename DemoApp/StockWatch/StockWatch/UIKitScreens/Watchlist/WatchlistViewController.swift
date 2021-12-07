@@ -52,7 +52,7 @@ final class WatchlistViewController: UIViewController, Renderer {
     }
     
     override func viewDidLoad() {
-        render()
+        source.subscribe(self)
     }
     
     func render() {

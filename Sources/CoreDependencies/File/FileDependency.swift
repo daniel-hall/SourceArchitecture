@@ -79,7 +79,7 @@ public extension CoreDependencies {
         
         init(resource: Resource) {
             self.resource = resource
-            state = MutableState<MutableProperties>(mutableProperties: .init()) { state in .notFound(.init(error: nil, set: state.action(\.set))) }
+            state = MutableState<MutableProperties>(mutableProperties: .init()) { state in .notFound(.init(error: nil, set: state.set)) }
             super.init(state)
             do {
                 let attributes = try FileManager.default.attributesOfItem(atPath: resource.fileURL.path)
@@ -102,18 +102,18 @@ public extension CoreDependencies {
                         state.expiredWorkItem = workItem
                     }
                 }
-                state.setModel(.found(.init(value: data, isExpired: isExpired, set: state.action(\.set), clear: state.action(\.clear))))
+                state.setModel(.found(.init(value: data, isExpired: isExpired, set: state.set, clear: state.clear)))
             } catch {
-                state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                state.setModel(.notFound(.init(error: error, set: state.set)))
             }
             NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.willTerminateNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.didEnterBackgroundNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.willResignActiveNotification, object: nil)
         }
 
         @objc private func save() {
             guard let data = state.saveData else {
-                try? FileManager.default.removeItem(at: resource.fileURL)
                 return
             }
             do {
@@ -123,8 +123,9 @@ public extension CoreDependencies {
                 attributes[FileAttributeKey.modificationDate] = state.saveDate
                 try? FileManager.default.setAttributes(attributes, ofItemAtPath: self.resource.fileURL.path)
             } catch {
-                self.state.setModel(.notFound(.init(error: error, set: self.state.action(\.set))))
+                self.state.setModel(.notFound(.init(error: error, set: self.state.set)))
             }
+            state.saveData = nil
         }
 
         private func set(value: Resource.Value) {
@@ -146,20 +147,21 @@ public extension CoreDependencies {
                 DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + expireAfter, execute: workItem)
                 self.state.expiredWorkItem = workItem
             }
-            state.setModel(.found(.init(value: value, isExpired: isExpired, set: state.action(\.set), clear: state.action(\.clear))))
+            state.setModel(.found(.init(value: value, isExpired: isExpired, set: state.set, clear: state.clear)))
             do {
                 let data = try self.resource.encode(value)
                 state.saveData = data
             } catch {
                 state.saveData = nil
-                self.state.setModel(.notFound(.init(error: error, set: self.state.action(\.set))))
+                self.state.setModel(.notFound(.init(error: error, set: self.state.set)))
             }
         }
 
         private func clear() {
             state.expiredWorkItem?.cancel()
             state.saveData = nil
-            state.setModel(.notFound(.init(set: state.action(\.set))))
+            state.setModel(.notFound(.init(set: state.set)))
+            try? FileManager.default.removeItem(at: resource.fileURL)
         }
 
         deinit {
@@ -181,21 +183,21 @@ public extension CoreDependencies {
         init(resource: Resource, fileSource: Source<Persistable<Resource.ParentResource.Value>>) {
             self.resource = resource
             self.fileSource = fileSource
-            state = .init { state in .notFound(.init(set: state.action(\.set))) }
+            state = .init { state in .notFound(.init(set: state.set)) }
             super.init(state)
             switch fileSource.model {
             case .found(let found):
                 do {
                     guard let value = try resource.getElement(from: found.value) else {
-                        state.setModel(.notFound(.init(set: state.action(\.set))))
+                        state.setModel(.notFound(.init(set: state.set)))
                         return
                     }
-                    state.setModel(.found(.init(value: value, isExpired: { found.isExpired }, set: state.action(\.set), clear: state.action(\.clear))))
+                    state.setModel(.found(.init(value: value, isExpired: { found.isExpired }, set: state.set, clear: state.clear)))
                 } catch {
-                    state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                    state.setModel(.notFound(.init(error: error, set: state.set)))
                 }
             case .notFound:
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
             }
         }
 
@@ -213,10 +215,10 @@ public extension CoreDependencies {
             do {
                 let parentValue = try closure(fileValue)
                 let fileSource = fileSource
-                state.setModel(.found(.init(value: value, isExpired: { fileSource.model.found?.isExpired == true }, set: state.action(\.set), clear: state.action(\.clear))))
+                state.setModel(.found(.init(value: value, isExpired: { fileSource.model.found?.isExpired == true }, set: state.set, clear: state.clear)))
                 try? fileSource.model.set(parentValue)
             } catch {
-                state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                state.setModel(.notFound(.init(error: error, set: state.set)))
             }
         }
 
@@ -233,10 +235,10 @@ public extension CoreDependencies {
 
             do {
                 let value = try closure(fileValue)
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
                 try? fileSource.model.set(value)
             } catch {
-                state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                state.setModel(.notFound(.init(error: error, set: state.set)))
             }
         }
     }

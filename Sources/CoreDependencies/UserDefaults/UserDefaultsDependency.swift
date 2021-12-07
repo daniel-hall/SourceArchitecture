@@ -83,7 +83,7 @@ public extension CoreDependencies {
         
         init(resource: Resource) {
             self.resource = resource
-            state = MutableState<MutableProperties>(mutableProperties: .init()) { state in .notFound(.init(error: nil, set: state.action(\.set))) }
+            state = MutableState<MutableProperties>(mutableProperties: .init()) { state in .notFound(.init(error: nil, set: state.set)) }
             super.init(state)
             if let data = Foundation.UserDefaults.standard.data(forKey: resource.userDefaultsIdentifier) {
                 do {
@@ -105,24 +105,25 @@ public extension CoreDependencies {
                         }
                     }
                     let value = try resource.decode(record.data)
-                    state.setModel(.found(.init(value: value, isExpired: isExpired, set: state.action(\.set), clear: state.action(\.clear))))
+                    state.setModel(.found(.init(value: value, isExpired: isExpired, set: state.set, clear: state.clear)))
                 } catch {
-                    state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                    state.setModel(.notFound(.init(error: error, set: state.set)))
                 }
             } else {
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
             }
             NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.willTerminateNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.didEnterBackgroundNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(save), name: UIApplication.willResignActiveNotification, object: nil)
         }
 
         @objc private func save() {
             guard let data = state.saveData else {
-                Foundation.UserDefaults.standard.removeObject(forKey: resource.userDefaultsIdentifier)
                 return
             }
             Foundation.UserDefaults.standard.set(data, forKey: resource.userDefaultsIdentifier)
+            state.saveData = nil
         }
 
         private func set(value: Resource.Value) {
@@ -146,16 +147,17 @@ public extension CoreDependencies {
                     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + expireAfter, execute: workItem)
                     state.expiredWorkItem = workItem
                 }
-                state.setModel(.found(.init(value: value, isExpired: isExpired, set: state.action(\.set), clear: state.action(\.clear))))
+                state.setModel(.found(.init(value: value, isExpired: isExpired, set: state.set, clear: state.clear)))
             } catch {
-                state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                state.setModel(.notFound(.init(error: error, set: state.set)))
             }
         }
         
         private func clear() {
             state.expiredWorkItem?.cancel()
             state.saveData = nil
-            state.setModel(.notFound(.init(set: state.action(\.set))))
+            state.setModel(.notFound(.init(set: state.set)))
+            Foundation.UserDefaults.standard.removeObject(forKey: resource.userDefaultsIdentifier)
         }
 
         deinit {
@@ -178,21 +180,21 @@ public extension CoreDependencies {
         init(resource: Resource, userDefaultsSource: Source<Persistable<Resource.ParentResource.Value>>) {
             self.resource = resource
             self.userDefaultsSource = userDefaultsSource
-            state = .init { state in .notFound(.init(set: state.action(\.set))) }
+            state = .init { state in .notFound(.init(set: state.set)) }
             super.init(state)
             switch userDefaultsSource.model {
             case .found(let found):
                 do {
                     guard let value = try resource.getElement(from: found.value) else {
-                        state.setModel(.notFound(.init(set: state.action(\.set))))
+                        state.setModel(.notFound(.init(set: state.set)))
                         return
                     }
-                    state.setModel(.found(.init(value: value, isExpired: { found.isExpired }, set: state.action(\.set), clear: state.action(\.clear))))
+                    state.setModel(.found(.init(value: value, isExpired: { found.isExpired }, set: state.set, clear: state.clear)))
                 } catch {
-                    state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                    state.setModel(.notFound(.init(error: error, set: state.set)))
                 }
             case .notFound:
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
             }
         }
         
@@ -210,10 +212,10 @@ public extension CoreDependencies {
             do {
                 let parentValue = try closure(userDefaultsValue)
                 let userDefaultsSource = userDefaultsSource
-                state.setModel(.found(.init(value: value, isExpired: { userDefaultsSource.model.found?.isExpired == true }, set: state.action(\.set), clear: state.action(\.clear))))
+                state.setModel(.found(.init(value: value, isExpired: { userDefaultsSource.model.found?.isExpired == true }, set: state.set, clear: state.clear)))
                 try? userDefaultsSource.model.set(parentValue)
             } catch {
-                state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                state.setModel(.notFound(.init(error: error, set: state.set)))
             }
         }
         
@@ -230,10 +232,10 @@ public extension CoreDependencies {
             
             do {
                 let value = try closure(userDefaultsValue)
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
                 try? userDefaultsSource.model.set(value)
             } catch {
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
             }
         }
     }

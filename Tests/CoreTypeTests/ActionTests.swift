@@ -51,16 +51,16 @@ final class ActionTests: XCTestCase {
             }
             let state: State
             init() {
-                state = .init { state in .firstState(.init(state: "First", switchToSecond: state.action(\.switchToSecond)))}
+                state = .init { state in .firstState(.init(state: "First", switchToSecond: state.switchToSecond))}
                 super.init(state)
             }
             
             func switchToFirst() {
-                state.setModel(.firstState(.init(state: "First", switchToSecond: state.action(\.switchToSecond))))
+                state.setModel(.firstState(.init(state: "First", switchToSecond: state.switchToSecond)))
             }
             
             func switchToSecond() {
-                state.setModel(.secondState(.init(state: "Second", switchToFirst: state.action(\.switchToFirst))))
+                state.setModel(.secondState(.init(state: "Second", switchToFirst: state.switchToFirst)))
             }
         }
         

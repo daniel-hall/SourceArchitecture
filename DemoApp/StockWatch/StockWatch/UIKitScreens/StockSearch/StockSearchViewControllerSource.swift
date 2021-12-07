@@ -48,7 +48,7 @@ final class StockSearchViewControllerSource: SyncedSource<StockSearchViewControl
             symbols.model.map { symbols in
                 StockSearchViewController.Model(searchTerm: nil, symbols: symbols.map {
                     StockSearchCellSource(dependencies: dependencies, symbol: $0)
-                }, search: state.action(\.search)) }
+                }, search: state.search) }
         }
         self.symbols = symbols
         self.dependencies = dependencies
@@ -84,7 +84,7 @@ final class StockSearchViewControllerSource: SyncedSource<StockSearchViewControl
                         }
                         return filtered
                     } ?? symbols
-                return StockSearchViewController.Model(searchTerm: searchTerm, symbols: filtered.map { StockSearchCellSource(dependencies: self.dependencies, symbol: $0) }, search: state.action(\.search))
+                return StockSearchViewController.Model(searchTerm: searchTerm, symbols: filtered.map { StockSearchCellSource(dependencies: self.dependencies, symbol: $0) }, search: state.search)
             }
         )
     }
@@ -110,7 +110,7 @@ final class StockSearchCellSource: Source<StockSearchCell.RenderedModel> {
                     .map { watched, quote in
                         let isWatchlisted = watched.found != nil
                         return quote.map { StockSearchCell.Model(price: $0.price, lastUpdatedDate: $0.timestamp) }
-                        .mapPlaceholder { _ in  StockSearchCell.Placeholder(isWatchlisted: isWatchlisted, toggleWatched: isWatchlisted ? watched.found!.clear : watched.set.map("StockCellSource.toggle") { symbol }, select: selected.model.set.map("StockCellSource.select") { symbol })
+                        .mapPlaceholder { _ in  StockSearchCell.Placeholder(isWatchlisted: isWatchlisted, toggleWatched: isWatchlisted ? watched.found!.clear : watched.set.map { symbol }, select: selected.model.set.map { symbol })
                         }
                     }
             }

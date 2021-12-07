@@ -1,5 +1,6 @@
 //
-//  Renderer.swift
+//  MainHostingController.swift
+//  LocalToDoListApp
 //  SourceArchitecture
 //
 //  Copyright (c) 2021 Daniel Hall
@@ -23,32 +24,17 @@
 //  SOFTWARE.
 //
 
-import Foundation
+import UIKit
 import SwiftUI
+import SourceArchitecture
 
 
-public protocol Renderer {
-    /// An associated Model type that the Renderer defines to describe what data it expects to present and what Actions it expects to invoke
-    associatedtype Model = RenderedModel
-    
-    /// Sometimes a Renderer needs to render an array of its Model, a Connectable version of its Model, etc. Whatever context / wrappers like this surround its core model represent its actual RenderedModel
-    associatedtype RenderedModel
-    
-    /// A Source of the model that this Renderer will render.
-    var source: AnySource<RenderedModel> { get }
-    
-    /// The method which will get called when the Source updates
-    func render()
-}
-
-public extension Renderer {
-    var model: RenderedModel {
-        source.model
+class MainHostingController: UIHostingController<ToDoListView> {
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: CoreDependencies())))
+    }
+    init() {
+        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: CoreDependencies())))
     }
 }
 
-public extension Renderer where Self: View {
-    func render() {
-        // no-op since SwiftUI views render via their body property and will get the update automatically
-    }
-}

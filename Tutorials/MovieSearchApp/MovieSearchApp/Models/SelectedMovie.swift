@@ -41,10 +41,10 @@ final class SelectedMovieSource: SyncedSource<SelectedMovieSource.Model>, CacheR
     let cacheIdentifier = "selectedMovie"
     let state: MutableState<MutableProperties>
     init(dependencies: CacheDependency) {
-        state = .init(mutableProperties: .init()) { state in .init(selectedID: 0, setSelection: state.action(\.setSelected)) }
+        state = .init(mutableProperties: .init()) { state in .init(selectedID: 0, setSelection: state.setSelected) }
         super.init(state, dependencies: dependencies)
     }
     private func setSelected(_ id: Int) {
-        state.setModel(.init(selectedID: id, setSelection: state.action(\.setSelected)))
+        state.setModel(.init(selectedID: id, setSelection: state.setSelected))
     }
 }
