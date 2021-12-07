@@ -81,13 +81,13 @@ public extension CoreDependencies {
         }
         let state: MutableState<MutableProperties>
         init() {
-            state = .init(mutableProperties: .init()) { state in .failure(.init(error: CoreDependencies.Network.Error.missingURL, failedAttempts: state.failedAttempts, retry: state.action(\.retry))) }
+            state = .init(mutableProperties: .init()) { state in .failure(.init(error: CoreDependencies.Network.Error.missingURL, failedAttempts: state.failedAttempts, retry: state.retry)) }
             super.init(state)
         }
         
         private func retry() {
             state.failedAttempts = state.failedAttempts + 1
-            state.setModel(.failure(.init(error: CoreDependencies.Network.Error.missingURL, failedAttempts: state.failedAttempts, retry: state.action(\.retry))))
+            state.setModel(.failure(.init(error: CoreDependencies.Network.Error.missingURL, failedAttempts: state.failedAttempts, retry: state.retry)))
         }
     }
     
@@ -187,19 +187,19 @@ public extension CoreDependencies {
                         self.state.timeoutWorkItem?.cancel()
                         self.state.failedAttempts = 0
                         if self.state.isCancelled { return }
-                        self.state.setModel(.fetched(.init(value: value, refresh: self.state.action(\.refresh))))
+                        self.state.setModel(.fetched(.init(value: value, refresh: self.state.refresh)))
                     } catch {
                         self.state.failedAttempts += 1
                         self.state.timeoutWorkItem?.cancel()
                         if self.state.isCancelled { return }
-                        self.state.setModel(.failure(.init(error: error, failedAttempts: self.state.failedAttempts, retry: self.state.action(\.retry))))
+                        self.state.setModel(.failure(.init(error: error, failedAttempts: self.state.failedAttempts, retry: self.state.retry)))
                     }
                 } else {
                     let error = error ?? CoreDependencies.Network.Error.missingDataOrResponse
                     self.state.failedAttempts += 1
                     self.state.timeoutWorkItem?.cancel()
                     if self.state.isCancelled { return }
-                    self.state.setModel(.failure(.init(error: error, failedAttempts: self.state.failedAttempts, retry: self.state.action(\.retry))))
+                    self.state.setModel(.failure(.init(error: error, failedAttempts: self.state.failedAttempts, retry: self.state.retry)))
                 }
             }
             state.isCancelled = true
@@ -212,7 +212,7 @@ public extension CoreDependencies {
                         self.state.failedAttempts += 1
                         self.state.isCancelled = true
                         self.state.dataTask?.cancel()
-                        self.state.setModel(.failure(.init(error: CoreDependencies.Network.Error.timedOut, failedAttempts: self.state.failedAttempts, retry: self.state.action(\.retry))))
+                        self.state.setModel(.failure(.init(error: CoreDependencies.Network.Error.timedOut, failedAttempts: self.state.failedAttempts, retry: self.state.retry)))
                     }
                 }
                 DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + $0, execute: timeoutWorkItem)

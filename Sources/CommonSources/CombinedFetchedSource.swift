@@ -84,17 +84,17 @@ final class CombinedFetchedSource<First, Second>: Source<Fetchable<(First, Secon
             let firstHasRefreshed = state.firstHasRefreshed
             let secondHasRefreshed = state.secondHasRefreshed
             guard firstHasRefreshed && secondHasRefreshed else { return }
-            state.setModel(.fetched(.init(value: (first.value, second.value), refresh: state.action(\.refresh))))
+            state.setModel(.fetched(.init(value: (first.value, second.value), refresh: state.refresh)))
         case (.failure(let failure), _):
             if case .failure(let existing) = model, existing.error.localizedDescription == failure.error.localizedDescription && existing.failedAttempts == failure.failedAttempts {
                 return
             }
-            state.setModel(.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: state.action(\.retry))))
+            state.setModel(.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: state.retry)))
         case (_, .failure(let failure)):
             if case .failure(let existing) = model, existing.error.localizedDescription == failure.error.localizedDescription && existing.failedAttempts == failure.failedAttempts {
                 return
             }
-            state.setModel(.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: state.action(\.retry))))
+            state.setModel(.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: state.retry)))
         case (.fetching(let fetching), _):
             if case .fetching = model { return }
             state.setModel(.fetching(.init(progress: fetching.progress)))

@@ -73,7 +73,7 @@ final class MovieSearchSource: Source<Fetchable<MovieSearch>>, ActionSource {
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
         self.selectedMovieSource = SelectedMovieSource(dependencies: dependencies)
-        state = .init(mutableProperties: .init()) { state in .fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: state.action(\.search), loadMore: state.action(\.loadMore)), refresh: .noOp())) }
+        state = .init(mutableProperties: .init()) { state in .fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: state.search, loadMore: state.loadMore), refresh: .noOp)) }
         super.init(state)
     }
 
@@ -94,14 +94,14 @@ final class MovieSearchSource: Source<Fetchable<MovieSearch>>, ActionSource {
                     }
                 } ?? .fromValue(.fetching(.init(placeholder: UIImage(systemName: "photo")!, progress: nil)))
 
-                return MovieSearch.Result(id: id, title: title, description: overview, releaseDate: releaseDate, rating: "⭐️ " + String(format:"%.01f", $0.vote_average ?? 0), thumbnail: thumbnailSource, select: selectedMovieSource.model.setSelection.map("MovieSearch.select") { id })
+                return MovieSearch.Result(id: id, title: title, description: overview, releaseDate: releaseDate, rating: "⭐️ " + String(format:"%.01f", $0.vote_average ?? 0), thumbnail: thumbnailSource, select: selectedMovieSource.model.setSelection.map { id })
             }
             // Add to our existing results
             state.accumulatedResults += results
             state.currentPage = $0.page ?? 1
             state.totalPages = $0.total_pages ?? 1
 
-            return MovieSearch(currentSearchTerm: state.searchTerm, results: state.accumulatedResults, search: state.action(\.search), loadMore: state.currentPage < state.totalPages ? state.action(\.loadMore) : nil)
+            return MovieSearch(currentSearchTerm: state.searchTerm, results: state.accumulatedResults, search: state.search, loadMore: state.currentPage < state.totalPages ? state.loadMore : nil)
         }
         // If we are loading additional results, don't set a ".fetching" state, only add new results once they are fetched
         if !state.accumulatedResults.isEmpty {
@@ -117,7 +117,7 @@ final class MovieSearchSource: Source<Fetchable<MovieSearch>>, ActionSource {
         // If we changed out search term, then we need to clear our existing results
         state.accumulatedResults = []
         guard let term = term else {
-            state.setModel(.fetched(.init(value: .init(currentSearchTerm: term, results: [], search: state.action(\.search), loadMore: state.action(\.loadMore)), refresh: .noOp())))
+            state.setModel(.fetched(.init(value: .init(currentSearchTerm: term, results: [], search: state.search, loadMore: state.loadMore), refresh: .noOp)))
             return
         }
         state.fetchableSource = dependencies.networkResource(MovieSearchResource(searchTerm: term, page: nil))

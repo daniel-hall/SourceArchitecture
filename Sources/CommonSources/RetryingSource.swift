@@ -122,7 +122,7 @@ final class RetryingSource<Value>: Source<Fetchable<Value>>, ActionSource {
                     if case .failure = self.model {
                         return
                     }
-                    let model = Fetchable<Value>.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: self.state.action(\.retry)))
+                    let model = Fetchable<Value>.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: self.state.retry))
                     self.state.setModel(model)
                 }
                 self.forwardWorkItem = workItem

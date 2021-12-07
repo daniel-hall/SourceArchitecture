@@ -125,6 +125,12 @@ extension AnySource: Identifiable where Model: Identifiable {
     public var id: Model.ID { (self as! Source<Model>).model.id }
 }
 
+extension AnySource: Equatable where Model: Equatable {
+    public static func ==(lhs: AnySource<Model>, rhs: AnySource<Model>) -> Bool {
+        return lhs.model == rhs.model
+    }
+}
+
 
 // MARK: - Source Protocols -
 
@@ -219,6 +225,7 @@ fileprivate class IsolatedState<Model, Properties> {
     }
 }
 
+@dynamicMemberLookup
 final public class SourceState<ParentSource: SourceProtocol> {
     fileprivate var isolatedState: IsolatedState<ParentSource.Model, Void>!
     fileprivate weak var source: Source<ParentSource.Model>?
@@ -284,22 +291,14 @@ public final class SourceMutableState<ParentSource: SourceProtocol, MutablePrope
 }
 
 public extension SourceState where ParentSource: ActionSource {
-    func action<T>(_ actionMethod: WritableKeyPath<ParentSource.Actions, ActionMethod<ParentSource, T>>) -> Action<T> {
-        let actions = ParentSource.Actions()
-        let method = actions[keyPath: actionMethod]
-        let methodName = Mirror(reflecting: actions).children.first { ($0.value as? ActionMethod<ParentSource, T>)?.uuid == method.uuid }!.label!
-        let identifier = String(describing: ParentSource.self) + "." + methodName
-        return .init(identifier: identifier, source: source as! ParentSource, method: method.method)
+    subscript<T>(dynamicMember actionMethod: WritableKeyPath<ParentSource.Actions, ActionMethod<ParentSource, T>>) -> Action<T> {
+        ParentSource.Actions().action(from: actionMethod, source: source as! ParentSource)
     }
 }
 
 public extension SourceMutableState where ParentSource: ActionSource {
-    func action<T>(_ actionMethod: WritableKeyPath<ParentSource.Actions, ActionMethod<ParentSource, T>>) -> Action<T> {
-        let actions = ParentSource.Actions()
-        let method = actions[keyPath: actionMethod]
-        let methodName = Mirror(reflecting: actions).children.first { ($0.value as? ActionMethod<ParentSource, T>)?.uuid == method.uuid }!.label!
-        let identifier = String(describing: ParentSource.self) + "." + methodName
-        return .init(identifier: identifier, source: source as! ParentSource, method: method.method)
+    subscript<T>(dynamicMember actionMethod: WritableKeyPath<ParentSource.Actions, ActionMethod<ParentSource, T>>) -> Action<T> {
+        ParentSource.Actions().action(from: actionMethod, source: source as! ParentSource)
     }
 }
 
@@ -312,6 +311,15 @@ public protocol ActionSource: SourceProtocol {
 
 public protocol ActionMethods {
     init()
+}
+
+fileprivate extension ActionMethods {
+    func action<ParentSource: SourceProtocol, T>(from keyPath: WritableKeyPath<Self, ActionMethod<ParentSource, T>>, source: ParentSource) -> Action<T> {
+        let method = self[keyPath: keyPath]
+        let methodName = Mirror(reflecting: self).children.first { ($0.value as? ActionMethod<ParentSource, T>)?.uuid == method.uuid }!.label!
+        let identifier = String(describing: ParentSource.self) + "." + methodName
+        return .init(identifier: identifier, source: source, method: method.method)
+    }
 }
 
 public struct ActionMethod<Source: SourceProtocol, Input> {
@@ -351,4 +359,3 @@ fileprivate extension Action {
         }
     }
 }
-

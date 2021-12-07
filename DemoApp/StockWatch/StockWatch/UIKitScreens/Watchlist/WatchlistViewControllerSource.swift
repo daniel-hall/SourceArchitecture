@@ -46,7 +46,7 @@ final class WatchlistViewControllerSource: SyncedSource<WatchlistViewController.
     private let state: MutableState<MutableProperties>
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
-        self.state = .init(mutableProperties: .init(), model: .init(watchedStocks: [], unwatch: .noOp(), select: .noOp()))
+        self.state = .init(mutableProperties: .init(), model: .init(watchedStocks: [], unwatch: .noOp, select: .noOp))
         selected = SelectedSymbolSource(dependencies: dependencies)
         watchlist = WatchlistSource(dependencies: dependencies)
         super.init(state, dependencies: dependencies)
@@ -54,7 +54,7 @@ final class WatchlistViewControllerSource: SyncedSource<WatchlistViewController.
     }
     
     private func update() {
-        state.setModel(WatchlistViewController.RenderedModel(watchedStocks: watchlist.model.watchedSymbols.map { WatchedStockCellSource(dependencies: dependencies, symbol: $0) }, unwatch: state.action(\.unwatch), select: state.action(\.select)))
+        state.setModel(WatchlistViewController.RenderedModel(watchedStocks: watchlist.model.watchedSymbols.map { WatchedStockCellSource(dependencies: dependencies, symbol: $0) }, unwatch: state.unwatch, select: state.select))
     }
     
     private func unwatch(symbol: WatchedStockCell.RenderedModel.Placeholder) {

@@ -36,7 +36,7 @@ class StockDetailViewControllerSource: Source<StockDetailViewController.Rendered
             .flatMap {
                 switch $0 {
                 case .notFound:
-                    return .fromValue(.failure(.init(error: NSError(domain: "StockDetailSource", code: 1, userInfo: [NSLocalizedDescriptionKey: "No source has been selected"]), failedAttempts: 1, retry: .noOp())))
+                    return .fromValue(.failure(.init(error: NSError(domain: "StockDetailSource", code: 1, userInfo: [NSLocalizedDescriptionKey: "No source has been selected"]), failedAttempts: 1, retry: .noOp)))
                 case .found(let found):
                     let symbol = found.value
                     let companyInfo = CompanyInfoSource(dependencies: dependencies, symbol: found.value).retrying(.withExponentialBackoff, forwardErrorAfter: .never)
@@ -51,7 +51,7 @@ class StockDetailViewControllerSource: Source<StockDetailViewController.Rendered
                                     .mapFetchedValue(UIImage.init(data:))
                                     .map { $0.asFetchable() }
                                 let isWatched = watched.found != nil
-                                return StockDetailViewController.Model(symbol: info.symbol, companyName: info.name, companyDescription: info.description, ceoName: info.ceo, numberOfEmployees: info.numberOfEmployees, marketCap: quote.marketCap, logoSource: logoSource, isWatched: isWatched, toggleWatched: isWatched ? watched.found!.clear : watched.set.map("StockDetailViewControllerSource.toggle") { symbol })
+                                return StockDetailViewController.Model(symbol: info.symbol, companyName: info.name, companyDescription: info.description, ceoName: info.ceo, numberOfEmployees: info.numberOfEmployees, marketCap: quote.marketCap, logoSource: logoSource, isWatched: isWatched, toggleWatched: isWatched ? watched.found!.clear : watched.set.map { symbol })
                             }.asFetchable()
                         }
                 }

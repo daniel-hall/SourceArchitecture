@@ -62,7 +62,7 @@ final class PersistedFetchedSource<Value>: Source<Fetchable<Value>>, ActionSourc
         case .notFound:
             subscribeFetched()
         case .found(let found):
-            state.setModel(.fetched(.init(value: found.value, refresh: state.action(\.refresh))))
+            state.setModel(.fetched(.init(value: found.value, refresh: state.refresh)))
             if found.isExpired {
                 refresh()
             }

@@ -49,14 +49,14 @@ final class WatchlistSource: Source<Watchlist>, ActionSource {
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
         self.file = dependencies.fileResource(WatchlistResource())
-        let state = State(model: .init(watchedSymbols: [], add: .noOp(), remove: .noOp(), toggle: .noOp()))
+        let state = State(model: .init(watchedSymbols: [], add: .noOp, remove: .noOp, toggle: .noOp))
         self.state = state
         super.init(state)
         file.subscribe(self, method: WatchlistSource.update)
     }
 
     private func update() {
-        state.setModel(.init(watchedSymbols: file.model.found?.value ?? [], add: state.action(\.add), remove: state.action(\.remove), toggle: state.action(\.toggle)))
+        state.setModel(.init(watchedSymbols: file.model.found?.value ?? [], add: state.add, remove: state.remove, toggle: state.toggle))
     }
 
     private func add(symbol: StockSymbol) {

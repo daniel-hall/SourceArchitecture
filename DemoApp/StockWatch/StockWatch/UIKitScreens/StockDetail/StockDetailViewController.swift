@@ -68,7 +68,7 @@ public class StockDetailViewController: UIViewController, Renderer {
 
     public override func viewDidLoad() {
         super.viewDidLoad()
-        render()
+        source.subscribe(self)
     }
 
     // Virtually all the work a VC does is render the model to appropriate views and properties, and handle user input by calling actions on the model.
@@ -96,9 +96,7 @@ public class StockDetailViewController: UIViewController, Renderer {
             watchlistButton.isHidden = false
             watchlistButton.setTitle(fetched.isWatched ? "Unwatch" : "Watch", for: .normal)
             watchlistButton.setTitleColor(fetched.isWatched ? .systemRed : .systemGreen, for: .normal)
-            fetched.logoSource.model.fetched.map {
-                logo.image = $0.value
-            }
+            logo.image = fetched.logoSource.model.fetched?.value
             fetched.logoSource.subscribe(self)
         }
     }

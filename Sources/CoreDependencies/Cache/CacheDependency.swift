@@ -74,7 +74,7 @@ public extension CoreDependencies {
         init(resource: Resource) {
             self.resource = resource
             state = .init(mutableProperties: .init()) { state in
-                return Persistable<Resource.Value>.notFound(.init(error: nil, set: state.action(\.set)))
+                return Persistable<Resource.Value>.notFound(.init(error: nil, set: state.set))
             }
             super.init(state)
         }
@@ -96,13 +96,13 @@ public extension CoreDependencies {
                 DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + expireAfter, execute: workItem)
                 state.expiredWorkItem = workItem
             }
-            state.setModel(.found(.init(value: value, isExpired: isExpired, set: self.state.action(\.set), clear: self.state.action(\.clear))))
+            state.setModel(.found(.init(value: value, isExpired: isExpired, set: self.state.set, clear: self.state.clear)))
         }
         
         private func clear() {
             state.cachedValue = nil
             state.expiredWorkItem?.cancel()
-            state.setModel(.notFound(.init(error: nil, set: state.action(\.set))))
+            state.setModel(.notFound(.init(error: nil, set: state.set)))
         }
     }
     
@@ -119,21 +119,21 @@ public extension CoreDependencies {
         init(resource: Resource, cacheSource: Source<Persistable<Resource.ParentResource.Value>>) {
             self.resource = resource
             self.cacheSource = cacheSource
-            state = .init { state in .notFound(.init(error: nil, set: state.action(\.set))) }
+            state = .init { state in .notFound(.init(error: nil, set: state.set)) }
             super.init(state)
             switch cacheSource.model {
             case .found(let found):
                 do {
                     guard let value = try resource.getElement(from: found.value) else {
-                        state.setModel(.notFound(.init(set: state.action(\.set))))
+                        state.setModel(.notFound(.init(set: state.set)))
                         return
                     }
-                    state.setModel(.found(.init(value: value, isExpired: { found.isExpired }, set: state.action(\.set), clear: state.action(\.clear))))
+                    state.setModel(.found(.init(value: value, isExpired: { found.isExpired }, set: state.set, clear: state.clear)))
                 } catch {
-                    state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                    state.setModel(.notFound(.init(error: error, set: state.set)))
                 }
             case .notFound:
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
             }
         }
         
@@ -151,10 +151,10 @@ public extension CoreDependencies {
             do {
                 let parentValue = try closure(cacheValue)
                 let cacheSource = cacheSource
-                state.setModel(.found(.init(value: value, isExpired: { cacheSource.model.found?.isExpired == true }, set: state.action(\.set), clear: state.action(\.clear))))
+                state.setModel(.found(.init(value: value, isExpired: { cacheSource.model.found?.isExpired == true }, set: state.set, clear: state.clear)))
                 try? cacheSource.model.set(parentValue)
             } catch {
-                state.setModel(.notFound(.init(error: error, set: state.action(\.set))))
+                state.setModel(.notFound(.init(error: error, set: state.set)))
             }
         }
         
@@ -171,10 +171,10 @@ public extension CoreDependencies {
             
             do {
                 let value = try closure(cacheValue)
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
                 try? cacheSource.model.set(value)
             } catch {
-                state.setModel(.notFound(.init(set: state.action(\.set))))
+                state.setModel(.notFound(.init(set: state.set)))
             }
         }
     }

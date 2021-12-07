@@ -63,7 +63,7 @@ final class StockSearchViewController: UIViewController, Renderer {
             self?.tableView.contentInset = .zero
         }
         ]
-        render()
+        source.subscribe(self)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -168,6 +168,7 @@ final class StockSearchCell: UITableViewCell, Renderer {
         isSameSymbol = lastSymbol == model.placeholder.symbol
         lastSymbol = model.placeholder.symbol
         try? model.connect()
+        source.subscribe(self)
     }
     
     func render() {
