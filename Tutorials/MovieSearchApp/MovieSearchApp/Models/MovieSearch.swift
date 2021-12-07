@@ -73,7 +73,7 @@ final class MovieSearchSource: Source<Fetchable<MovieSearch>>, ActionSource {
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
         self.selectedMovieSource = SelectedMovieSource(dependencies: dependencies)
-        state = .init(mutableProperties: .init()) { state in .fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: state.search, loadMore: state.loadMore), refresh: .noOp)) }
+        state = MutableState(mutableProperties: MutableProperties()) { state in .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: nil, results: [], search: state.search, loadMore: state.loadMore), refresh: .noOp)) }
         super.init(state)
     }
 
@@ -92,7 +92,7 @@ final class MovieSearchSource: Source<Fetchable<MovieSearch>>, ActionSource {
                         dependencies.cachedNetworkResource(MovieImageResource(url: url))
                         .addingPlaceholder(UIImage(systemName: "photo")!)
                     }
-                } ?? .fromValue(.fetching(.init(placeholder: UIImage(systemName: "photo")!, progress: nil)))
+                } ?? .fromValue(.fetching(FetchableWithPlaceholder.Fetching(placeholder: UIImage(systemName: "photo")!, progress: nil)))
 
                 return MovieSearch.Result(id: id, title: title, description: overview, releaseDate: releaseDate, rating: "⭐️ " + String(format:"%.01f", $0.vote_average ?? 0), thumbnail: thumbnailSource, select: selectedMovieSource.model.setSelection.map { id })
             }
@@ -117,7 +117,7 @@ final class MovieSearchSource: Source<Fetchable<MovieSearch>>, ActionSource {
         // If we changed out search term, then we need to clear our existing results
         state.accumulatedResults = []
         guard let term = term else {
-            state.setModel(.fetched(.init(value: .init(currentSearchTerm: term, results: [], search: state.search, loadMore: state.loadMore), refresh: .noOp)))
+            state.setModel(.fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: state.search, loadMore: state.loadMore), refresh: .noOp)))
             return
         }
         state.fetchableSource = dependencies.networkResource(MovieSearchResource(searchTerm: term, page: nil))
