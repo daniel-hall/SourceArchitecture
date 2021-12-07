@@ -40,10 +40,10 @@ final class CombinedFetchedSourceTests: XCTestCase {
         let combined = firstSource.combinedFetch(with: secondSource)
         XCTAssertNotNil(combined.model.fetching)
         XCTAssertNil(combined.model.fetching?.progress)
-        firstSource.setValue(.fetched(.init(value: "First", refresh: .noOp())))
+        firstSource.setValue(.fetched(.init(value: "First", refresh: .noOp)))
         XCTAssertNotNil(combined.model.fetching)
         XCTAssertNil(combined.model.fetching?.progress)
-        secondSource.setValue(.fetched(.init(value: "Second", refresh: .noOp())))
+        secondSource.setValue(.fetched(.init(value: "Second", refresh: .noOp)))
         XCTAssert((combined.model.fetched?.value.0, combined.model.fetched?.value.1) == ("First", "Second"))
     }
 
@@ -51,8 +51,8 @@ final class CombinedFetchedSourceTests: XCTestCase {
         let firstSource: MutableValueSource<Fetchable<String>> = .init(value: .fetching(.init(progress: nil)))
         let secondSource: MutableValueSource<Fetchable<String>> = .init(value: .fetching(.init(progress: nil)))
         let combined = firstSource.combinedFetch(with: secondSource)
-        firstSource.setValue(.fetched(.init(value: "First", refresh: .noOp())))
-        secondSource.setValue(.failure(.init(error: "second error", failedAttempts: 1, retry: .noOp())))
+        firstSource.setValue(.fetched(.init(value: "First", refresh: .noOp)))
+        secondSource.setValue(.failure(.init(error: "second error", failedAttempts: 1, retry: .noOp)))
         XCTAssertEqual(combined.model.failure?.error.localizedDescription, "second error")
     }
 
@@ -61,9 +61,9 @@ final class CombinedFetchedSourceTests: XCTestCase {
         let firstSource: MutableValueSource<Fetchable<String>> = .init(value: .fetching(.init(progress: nil)))
         let secondSource: MutableValueSource<Fetchable<String>> = .init(value: .fetching(.init(progress: nil)))
         let combined = firstSource.combinedFetch(with: secondSource)
-        firstSource.setValue(.failure(.init(error: "first error", failedAttempts: 1, retry: .noOp())))
+        firstSource.setValue(.failure(.init(error: "first error", failedAttempts: 1, retry: .noOp)))
         XCTAssertEqual(combined.model.failure?.error.localizedDescription, "first error")
-        secondSource.setValue(.failure(.init(error: "second error", failedAttempts: 1, retry: .noOp())))
+        secondSource.setValue(.failure(.init(error: "second error", failedAttempts: 1, retry: .noOp)))
         XCTAssertEqual(combined.model.failure?.error.localizedDescription, "first error")
     }
 
@@ -74,7 +74,7 @@ final class CombinedFetchedSourceTests: XCTestCase {
         let firstRefresh = Action<Void>(identifier: "refresh") {
             firstHasRefreshed = true
             DispatchQueue.global().async {
-                firstSource.setValue(.fetched(.init(value: "First2", refresh: .noOp())))
+                firstSource.setValue(.fetched(.init(value: "First2", refresh: .noOp)))
                 firstExpectation.fulfill()
             }
         }
@@ -86,7 +86,7 @@ final class CombinedFetchedSourceTests: XCTestCase {
         let secondRefresh = Action<Void>(identifier: "refresh") {
             secondHasRefreshed = true
             DispatchQueue.global().async {
-                secondSource.setValue(.fetched(.init(value: "Second2", refresh: .noOp())))
+                secondSource.setValue(.fetched(.init(value: "Second2", refresh: .noOp)))
                 secondExpectation.fulfill()
             }
         }

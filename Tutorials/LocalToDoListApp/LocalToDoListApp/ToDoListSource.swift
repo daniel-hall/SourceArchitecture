@@ -54,7 +54,7 @@ final class ToDoListSource: Source<ToDoList>, ActionSource {
 
     init(dependencies: FileDependency) {
         self.persisted = dependencies.fileResource(ToDoListResource())
-        state = .init(model: .init(name: "", items: [], add: .noOp))
+        state = State(model: ToDoList(name: "To Do", items: [], add: .noOp))
         super.init(state)
         persisted.subscribe(self, method: ToDoListSource.update)
         ToDoItemSource.itemDeletedPublisher.sink { [weak self] item in
@@ -71,8 +71,8 @@ final class ToDoListSource: Source<ToDoList>, ActionSource {
 
     private func update() {
         switch persisted.model {
-        case .notFound: state.setModel(.init(name: "To Do", items: [], add: state.add))
-        case .found(let found): state.setModel(.init(name: "To Do", items: found.value.map { ToDoItemSource($0) }, add: state.add))
+        case .notFound: state.setModel(ToDoList(name: "To Do", items: [], add: state.add))
+        case .found(let found): state.setModel(ToDoList(name: "To Do", items: found.value.map { ToDoItemSource($0) }, add: state.add))
         }
     }
 
@@ -92,12 +92,12 @@ final class ToDoItemSource: Source<ToDoItem>, ActionSource {
     private let state: State
 
     fileprivate init(_ item: SavedToDoItem) {
-        state = .init { state in .init(id: item.id, description: item.description, dateCompleted: item.dateCompleted, setCompleted: state.setCompleted, setDescription: state.setDescription, delete: state.delete) }
+        state = State(model: { state in ToDoItem(id: item.id, description: item.description, dateCompleted: item.dateCompleted, setCompleted: state.setCompleted, setDescription: state.setDescription, delete: state.delete) })
         super.init(state)
     }
 
     private func setDescription(_ description: String) {
-        state.setModel(.init(id: model.id, description: description, dateCompleted: model.dateCompleted, setCompleted: state.setCompleted, setDescription: state.setDescription, delete: state.delete))
+        state.setModel(ToDoItem(id: model.id, description: description, dateCompleted: model.dateCompleted, setCompleted: state.setCompleted, setDescription: state.setDescription, delete: state.delete))
         Self.itemChangedPublisher.send(model)
     }
 
@@ -107,14 +107,14 @@ final class ToDoItemSource: Source<ToDoItem>, ActionSource {
 
     private func setCompleted(_ isCompleted: Bool) {
         let dateCompleted: Date? = isCompleted ? .now : nil
-        state.setModel(.init(id: model.id, description: model.description, dateCompleted: dateCompleted, setCompleted: state.setCompleted, setDescription: state.setDescription, delete: state.delete))
+        state.setModel(ToDoItem(id: model.id, description: model.description, dateCompleted: dateCompleted, setCompleted: state.setCompleted, setDescription: state.setDescription, delete: state.delete))
         Self.itemChangedPublisher.send(model)
     }
 }
 
 fileprivate extension Array where Element == Source<ToDoItem> {
     var asSavedItems: [SavedToDoItem] {
-        map { .init(id: $0.model.id, description: $0.model.description, dateCompleted: $0.model.dateCompleted) }
+        map { SavedToDoItem(id: $0.model.id, description: $0.model.description, dateCompleted: $0.model.dateCompleted) }
     }
 }
 

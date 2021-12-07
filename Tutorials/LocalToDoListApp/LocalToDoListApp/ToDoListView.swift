@@ -93,8 +93,8 @@ struct ToDoItemView: View, Renderer {
             }
         }.foregroundColor(model.dateCompleted == nil ? .black : .gray)
             .onChange(of: description) {
-                if $0.last == "\n" {
-                    description = String($0.dropLast())
+                if $0.contains("\n") {
+                    description = $0.replacingOccurrences(of: "\n", with: "")
                     isFocused = false
                     return
                 }
