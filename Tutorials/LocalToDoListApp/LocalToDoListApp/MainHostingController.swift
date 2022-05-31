@@ -3,7 +3,7 @@
 //  LocalToDoListApp
 //  SourceArchitecture
 //
-//  Copyright (c) 2021 Daniel Hall
+//  Copyright (c) 2022 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +26,14 @@
 
 import UIKit
 import SwiftUI
-import SourceArchitecture
 
 
 class MainHostingController: UIHostingController<ToDoListView> {
     required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: CoreDependencies())))
+        super.init(coder: aDecoder, rootView: ToDoListView(modelState: ToDoListSource(dependencies: AppDependencies()).eraseToSource().$model))
     }
     init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: CoreDependencies())))
+        super.init(rootView: ToDoListView(modelState: ToDoListSource(dependencies: AppDependencies()).eraseToSource().$model))
     }
 }
 

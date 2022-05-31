@@ -3,7 +3,7 @@
 //  MovieSearchApp
 //  SourceArchitecture
 //
-//  Copyright (c) 2021 Daniel Hall
+//  Copyright (c) 2022 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal

@@ -3,7 +3,7 @@
 //  MovieSearchApp
 //  SourceArchitecture
 //
-//  Copyright (c) 2021 Daniel Hall
+//  Copyright (c) 2022 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,83 +27,91 @@
 import SourceArchitecture
 import SwiftUI
 
-// We declare a protocol for the MovieDetailView's Source Dependency. Having a protocol like this allows us to create a top-level container that holds all dependencies for the view hierarchy (and making them mockable / injectable) while being compiler checked
-protocol MovieDetailsViewDependency {
-    var movieDetailsViewSource: Source<MovieDetailsView.RenderedModel> { get }
+
+// We declare a protocol for the MovieDetailView's Source Dependency. Having a protocol like this allows us to create a top-level container that holds all dependencies for the view hierarchy (and makes them mockable / injectable) while being compiler checked
+protocol MovieDetailsViewModelStateDependency {
+    var movieDetailsViewModelState: ModelState<MovieDetailsView.Model> { get }
 }
 
-// Source Architecture Renderers must declare a Source that they use. The AnySource / Source type implement ObservableObject and when its value changes, the View will automatically recalculate its body based on the new model value.
+// Source Architecture Views / Renderers must declare a source property to hold a Source of the Model that they use. The Source type implements ObservableObject and when its value changes, the View will automatically recalculate its body based on the new model value.
 struct MovieDetailsView: View, Renderer {
-    typealias Dependencies = MovieDetailsViewDependency
-    @ObservedObject var source: AnySource<Fetchable<MovieDetails>>
+    typealias Dependencies = MovieDetailsViewModelStateDependency
+    @ModelState var model: Connectable<Fetchable<MovieDetails>>
     init(dependencies: Dependencies) {
-        source = dependencies.movieDetailsViewSource
+        _model = dependencies.movieDetailsViewModelState
     }
     var body: some View {
-        switch model {
-        case .fetching:
-            ProgressView()
-        case .failure(let failure):
-            Text(failure.error.localizedDescription)
-            failure.retry.map { retry in Button("Retry") { try? retry() } }
-        case .fetched(let fetched):
-            ScrollView {
-                VStack(alignment: .center, spacing: 12) {
-                    PosterView(source: fetched.posterSource).aspectRatio(contentMode: .fit).frame(width: 200)
-                    VStack(spacing: 5) {
-                        Text(fetched.title).font(.title2)
-                        if let tagline = fetched.tagline {
-                            Text(tagline).font(.subheadline)
+        Group {
+            switch model.connected?.value {
+            case .none:
+                ProgressView().onAppear { model.connect() }
+            case .fetching:
+                ProgressView()
+            case .failure(let failure):
+                Text(failure.error.localizedDescription)
+                failure.retry.map { retry in Button("Retry") { retry() } }
+            case .fetched(let fetched):
+                ScrollView {
+                    VStack(alignment: .center, spacing: 12) {
+                        PosterView(modelState: fetched.poster).aspectRatio(contentMode: .fit).frame(width: 200, height: 300)
+                        VStack(spacing: 5) {
+                            Text(fetched.title).font(.title2)
+                            if let tagline = fetched.tagline {
+                                Text(tagline).font(.subheadline)
+                            }
+                            HStack(spacing: 12) {
+                                Text(fetched.rating)
+                                Text("|")
+                                HStack {
+                                    Text("Released:").font(.caption).fontWeight(.bold)
+                                    Text(fetched.releaseDate).font(.caption)
+                                }
+                            }
                         }
-                        HStack(spacing: 12) {
-                            Text(fetched.rating)
-                            Text("|")
+                        VStack(spacing: 12) {
+                            HStack(alignment: .top) {
+                                VStack (alignment: .leading) {
+                                    Text("Director:")
+                                        .fontWeight(.bold)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(fetched.director)
+                                }
+                                VStack (alignment: .leading) {
+                                    Text("Top Cast:")
+                                        .fontWeight(.bold)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(fetched.topCast.joined(separator: ", "))
+                                }
+                            }
                             HStack {
-                                Text("Released:").font(.caption).fontWeight(.bold)
-                                Text(fetched.releaseDate).font(.caption)
+                                VStack(alignment: .leading) {
+                                    Text("Budget:")
+                                        .fontWeight(.bold)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(fetched.budget)
+                                }
+                                VStack(alignment: .leading) {
+                                    Text("Box Office:")
+                                        .fontWeight(.bold)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(fetched.boxOffice)
+                                }
                             }
                         }
-                    }
-                    VStack(spacing: 12) {
-                        HStack(alignment: .top) {
-                            VStack (alignment: .leading) {
-                                Text("Director:")
-                                    .fontWeight(.bold)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(fetched.director)
-                            }
-                            VStack (alignment: .leading) {
-                                Text("Top Cast:")
-                                    .fontWeight(.bold)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(fetched.topCast.joined(separator: ", "))
-                            }
-                        }
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Budget:")
-                                    .fontWeight(.bold)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(fetched.budget)
-                            }
-                            VStack(alignment: .leading) {
-                                Text("Box Office:")
-                                    .fontWeight(.bold)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(fetched.boxOffice)
-                            }
-                        }
-                    }
-                    Spacer()
-                    Text(fetched.description)
-                }.padding()
+                        Spacer()
+                        Text(fetched.description)
+                    }.padding()
+                }
             }
-        }
+        }.onDisappear { model.disconnect() }
     }
 }
 
 struct PosterView: View, Renderer {
-    @ObservedObject var source: AnySource<FetchableWithPlaceholder<UIImage?, UIImage>>
+    @ModelState var model: FetchableWithPlaceholder<UIImage, UIImage>
+    init(modelState: ModelState<FetchableWithPlaceholder<UIImage, UIImage>>) {
+        _model = modelState
+    }
     var body: some View {
         Image(uiImage: model.fetched?.value ?? model.placeholder).resizable()
     }
