@@ -3,7 +3,7 @@
 //  MovieSearchApp
 //  SourceArchitecture
 //
-//  Copyright (c) 2021 Daniel Hall
+//  Copyright (c) 2022 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,22 +27,21 @@
 import SwiftUI
 import SourceArchitecture
 
-// We declare a protocol for the MovieSearchView's Source Dependency. Having a protocol like this allows us to create a top-level container that holds all dependencies for the view hierarchy (and making them mockable / injectable) while being compiler checked
-protocol MovieSearchViewDependency {
-    var movieSearchViewSource: Source<MovieSearchView.RenderedModel> { get }
+// We declare a protocol for the MovieSearchView's Source Dependency. Having a protocol like this allows us to create a top-level container that holds all dependencies for the view hierarchy (and makes them mockable / injectable) while being compiler checked
+protocol MovieSearchViewSourceDependency {
+    var movieSearchViewModelState: ModelState<MovieSearchView.Model> { get }
 }
 
-// Source Architecture Renderers must declare a Source that they use. The AnySource / Source type implement ObservableObject and when its value changes, the View will automatically recalculate its body based on the new model value.
+// Source Architecture Views / Renderers must declare a source property to hold a Source of the Model that they use. The Source type implements ObservableObject and when its value changes, the View will automatically recalculate its body based on the new model value.
 struct MovieSearchView: View, Renderer {
     // This view dependencies on its own Source dependency, plus the Dependencies of any children is must create
-    typealias Dependencies = MovieSearchViewDependency & MovieDetailsView.Dependencies
-    @ObservedObject var source: AnySource<Fetchable<MovieSearch>>
+    typealias Dependencies = MovieSearchViewSourceDependency & MovieDetailsView.Dependencies
+    @ModelState var model: Fetchable<MovieSearch>
     @State var searchText = ""
     private let dependencies: Dependencies
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
-        let source = dependencies.movieSearchViewSource
-        self.source = source
+        _model = dependencies.movieSearchViewModelState
     }
     var body: some View {
         VStack {
@@ -51,9 +50,9 @@ struct MovieSearchView: View, Renderer {
                 ProgressView()
             case .failure(let failure):
                 Text(failure.error.localizedDescription)
-                failure.retry.map { retry in Button("Retry", action: { try? retry() }) }
+                failure.retry.map { retry in Button("Retry", action: { retry() }) }
             case .fetched(let fetched):
-                IsSearchingResponder { if !$0 { try? fetched.search(nil) } }
+                IsSearchingResponder { if !$0 { fetched.search(nil) } }
                 if fetched.results.isEmpty {
                     Text("No Results").foregroundColor(.gray)
                 } else {
@@ -62,7 +61,7 @@ struct MovieSearchView: View, Renderer {
                             MovieSearchResultView(result: result).onAppear {
                                 // If this result is the tenth from the last result currently loaded, try to load more
                                 if result.id == fetched.results.suffix(10).first?.id {
-                                    try? fetched.loadMore?()
+                                    fetched.loadMore?()
                                 }
                             }
                             NavigationLink("") {
@@ -70,8 +69,8 @@ struct MovieSearchView: View, Renderer {
                                     .navigationTitle(result.title)
                                     .navigationBarTitleDisplayMode(.inline)
                                     .onAppear {
-                                        // When the MovieDetailView is show, we want to make sure to select the the result that was tapped so the MovieDetails are populated for that result
-                                        try? result.select()
+                                        // When the MovieDetailView is shown, we want to make sure to select the the result that was tapped so the MovieDetails are populated for that result
+                                        result.select()
                                     }
                             }.fixedSize()
                         }
@@ -84,7 +83,7 @@ struct MovieSearchView: View, Renderer {
         .navigationTitle("Movies")
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
         .onSubmit(of: .search) {
-            try? model.fetched?.search(searchText)
+            model.fetched?.search(searchText)
         }
     }
 }
@@ -100,11 +99,11 @@ struct IsSearchingResponder: View {
 }
 
 struct MovieSearchResultView: View, Renderer {
-    @ObservedObject var source: AnySource<FetchableWithPlaceholder<UIImage?, UIImage>>
+    @ModelState var model: FetchableWithPlaceholder<UIImage, UIImage>
     let result: MovieSearch.Result
     init(result: MovieSearch.Result) {
         self.result = result
-        source = result.thumbnail
+        _model = result.thumbnail
     }
     var body: some View {
         HStack(spacing: 10) {

@@ -3,7 +3,7 @@
 //  LocalToDoListApp
 //  SourceArchitecture
 //
-//  Copyright (c) 2021 Daniel Hall
+//  Copyright (c) 2022 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -30,30 +30,33 @@ import SwiftUI
 
 
 struct ToDoListView: View, Renderer {
-    @ObservedObject var source: AnySource<ToDoList>
+    @ModelState var model: ToDoList
     @State private var hasNewCell = false
+    init(modelState: ModelState<ToDoList>) {
+        _model = modelState
+    }
     var body: some View {
         NavigationView {
             ScrollViewReader { proxy in
-                List(model.items) { source in
-                    ToDoItemView(source: source, isNew: source.model.id == model.items.last?.id ? $hasNewCell : nil, proxy: proxy)
+                List(model.items) { modelState in
+                    ToDoItemView(modelState: modelState, isNew: modelState.model.id == model.items.last?.model.id ? $hasNewCell : nil, proxy: proxy)
                         .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", role: .destructive) {
-                                try? source.model.delete()
+                                modelState.model.delete()
                             }
                         }
                 }
                 .animation(.default, value: model.items)
-                .navigationTitle(model.name)
+                .navigationTitle("To Do")
                 .toolbar {
                     Button {
                         // Don't add more items if we are in the middle of scrolling to the newest one
                         if hasNewCell { return }
                         hasNewCell = true
-                        try? model.add()
+                        model.add()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.default) { proxy.scrollTo(model.items.last?.id ?? "0", anchor: .bottom) }
+                            withAnimation(.default) { proxy.scrollTo(model.items.last?.model.id ?? "0", anchor: .bottom) }
                         }
                     } label: { Image(systemName: "plus").font(.headline) }
                 }
@@ -65,23 +68,23 @@ struct ToDoListView: View, Renderer {
 
 struct ToDoItemView: View, Renderer {
     @FocusState fileprivate var isFocused: Bool
-    @ObservedObject var source: AnySource<ToDoItem>
+    @ModelState var model: ToDoItem
     @State var description: String = ""
     @Binding var isNew: Bool
     let proxy: ScrollViewProxy
 
-    init(source: AnySource<ToDoItem>, isNew: Binding<Bool>?, proxy: ScrollViewProxy) {
-        self.source = source
+    init(modelState: ModelState<ToDoItem>, isNew: Binding<Bool>?, proxy: ScrollViewProxy) {
+        _model = modelState
         self.proxy = proxy
         _isNew = isNew ?? .init(get: { false }, set: { _ in })
-        _description = .init(initialValue: source.model.description)
+        _description = .init(initialValue: model.description)
     }
 
     var body: some View {
         HStack {
             Button {
                 let isAlreadyCompleted = model.dateCompleted != nil
-                try? model.setCompleted(!isAlreadyCompleted)
+                model.setCompleted(!isAlreadyCompleted)
             } label: {
                 Image(systemName: model.dateCompleted == nil ? "square" : "checkmark.square")
             }
@@ -92,13 +95,18 @@ struct ToDoItemView: View, Renderer {
                 TextEditor(text: $description).frame(alignment: .center).alignmentGuide(VerticalAlignment.center) { $0.height * 0.475 }.focused($isFocused)
             }
         }.foregroundColor(model.dateCompleted == nil ? .black : .gray)
+            .onChange(of: model.description) { [previous = model.description] in
+                if previous != $0  {
+                    description = $0
+                }
+            }
             .onChange(of: description) {
                 if $0.contains("\n") {
                     description = $0.replacingOccurrences(of: "\n", with: "")
                     isFocused = false
                     return
                 }
-                try? model.setDescription($0)
+                model.setDescription($0)
                 withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) }
             }
             .onChange(of: model.dateCompleted) {
