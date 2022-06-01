@@ -1,13 +1,139 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Workspace
    version = "1.0">
-   <FileRef
-      location = "group:Tutorials/MovieSearchApp/MovieSearchApp.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:Tutorials/LocalToDoListApp/LocalToDoListApp.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:Tutorials/SyncedToDoListApp/SyncedToDoListApp.xcodeproj">
-   </FileRef>
+   <Group
+      location = "group:Sources/SourceArchitecture"
+      name = "SourceArchitecture">
+      <Group
+         location = "group:CoreTypes"
+         name = "CoreTypes">
+         <FileRef
+            location = "group:Source.swift">
+         </FileRef>
+         <FileRef
+            location = "group:Action.swift">
+         </FileRef>
+         <FileRef
+            location = "group:Renderer.swift">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:CommonModels"
+         name = "CommonModels">
+         <FileRef
+            location = "group:Mutable.swift">
+         </FileRef>
+         <FileRef
+            location = "group:FetchableWithPlaceholder.swift">
+         </FileRef>
+         <FileRef
+            location = "group:CurrentAndPrevious.swift">
+         </FileRef>
+         <FileRef
+            location = "group:Progress.swift">
+         </FileRef>
+         <FileRef
+            location = "group:ConnectableWithPlaceholder.swift">
+         </FileRef>
+         <FileRef
+            location = "group:Connectable.swift">
+         </FileRef>
+         <FileRef
+            location = "group:HasEqualPlaceholder.swift">
+         </FileRef>
+         <FileRef
+            location = "group:Fetchable.swift">
+         </FileRef>
+         <FileRef
+            location = "group:Persistable.swift">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:CommonDependencies"
+         name = "CommonDependencies">
+         <FileRef
+            location = "group:WeakAtomicCollection.swift">
+         </FileRef>
+         <FileRef
+            location = "group:CachePersistence.swift">
+         </FileRef>
+         <FileRef
+            location = "group:FilePersistence.swift">
+         </FileRef>
+         <FileRef
+            location = "group:UserDefaultsPersistence.swift">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:CommonSources"
+         name = "CommonSources">
+         <FileRef
+            location = "group:ProgressSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:FilteredSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:ConnectableSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:SingleValueSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:CurrentAndPreviousSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:PersistedFetchedSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:AfterDelaySource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:AutoConnectingSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:FetchableDataSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:MappedSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:FilteredDuplicatesSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:FlatMappedSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:RetryingSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:NetworkSyncedPersistableSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:MutableSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:CombinedSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:PrintUpdatesSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:CombinedFetchableSource.swift">
+         </FileRef>
+         <FileRef
+            location = "group:RefreshingSource.swift">
+         </FileRef>
+      </Group>
+   </Group>
+   <Group
+      location = "container:"
+      name = "ExampleApps">
+      <FileRef
+         location = "group:ExampleApps/MovieSearchApp/MovieSearchApp.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:ExampleApps/ToDoListApp/ToDoListApp.xcodeproj">
+      </FileRef>
+   </Group>
 </Workspace>

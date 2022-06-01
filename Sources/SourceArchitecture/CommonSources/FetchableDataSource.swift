@@ -49,6 +49,7 @@ public final class FetchableDataSource: CustomSource {
         let dataTask = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
             if let data = data {
                 if (response as? HTTPURLResponse)?.statusCode == 429 {
+                    self.threadsafe.failedAttempts += 1
                     self.model = .failure(.init(error: NSError(domain: "Network", code: 429), failedAttempts: self.threadsafe.failedAttempts, retry: self.actions.retry))
                     return
                 }
@@ -59,8 +60,8 @@ public final class FetchableDataSource: CustomSource {
                 self.model = .failure(.init(error: error!, failedAttempts: self.threadsafe.failedAttempts, retry: self.actions.retry))
             }
         }
-        defer { dataTask.resume() }
         threadsafe.dataTask = dataTask
+        dataTask.resume()
         return dataTask
     }
 
