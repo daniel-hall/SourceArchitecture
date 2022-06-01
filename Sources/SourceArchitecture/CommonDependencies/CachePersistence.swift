@@ -75,37 +75,35 @@ public struct WithMaxSizeAndMaxCount: CachePersistenceOptions {
 }
 
 /// An option that specifies that a CachePersistence should have no limits to the size it occupies or number of items. It will still respond to low memory notifications however.
-public struct Unbounded: CachePersistenceOptions { }
-
+public struct WithUnlimitedSizeAndCount: CachePersistenceOptions { }
 
 
 /// A Source-based implementation of caching that can optionally flush items to keep within a count or size limit
 public class CachePersistence<Options: CachePersistenceOptions> {
     private let _lock = NSRecursiveLock()
-    private var _dictionary = [String: Source<CachedItem>]()
+    private var _dictionary = [String: WeakCacheSource]()
     private var _maxCount: Int?
     private var _maxSize: Int?
     private var _currentSize: Int {
         _lock.lock()
         defer { _lock.unlock() }
-        return _dictionary.reduce(0) { $0 + ($1.value.model.size ?? 0) }
+        return _dictionary.reduce(0) { $0 + ($1.value.source?.model.size ?? 0) }
     }
 
     private var _currentCount: Int {
-        _dictionary.filter { !$0.value.model.isEmpty }.count
+        _dictionary.count
     }
 
     // Sort in order of which items should be flushed first (empty, expired, lower priority, older)
-    private var sortedItems: [(key: String, value: Source<CachedItem>)] {
-        _dictionary = _dictionary.filter { !($0.value.model.isEmpty && $0.value.model.retentionPolicy != .discardNever) }
-        return _dictionary
-            .filter { !$0.value.model.isEmpty }
-            .sorted {
-                ($0.1.model.isExpired() && !$1.1.model.isExpired() )
-                || ($0.1.model.isExpired() && $1.1.model.isExpired() )
-                || ($0.1.model.retentionPolicy < $1.1.model.retentionPolicy && !$1.1.model.isExpired())
-                || ($0.1.model.retentionPolicy == $1.1.model.retentionPolicy && !$1.1.model.isExpired() && $0.1.model.dateLastSet < $1.1.model.dateLastSet )
-            }
+    private var sortedItems: [(key: String, value: WeakCacheSource)] {
+        _dictionary = _dictionary.filter { $0.value.source != nil }
+        return _dictionary.sorted {
+            guard let first = $0.1.source?.model, let second = $1.1.source?.model else { return true }
+            return (first.isExpired() && !second.isExpired() )
+            || (first.isExpired() && second.isExpired() )
+            || (first.retentionPolicy < second.retentionPolicy && !second.isExpired())
+            || (first.retentionPolicy == second.retentionPolicy && !second.isExpired() && first.dateLastSet < second.dateLastSet )
+        }
     }
 
     private var adjustmentWorkItem: DispatchWorkItem?
@@ -121,9 +119,9 @@ public class CachePersistence<Options: CachePersistenceOptions> {
             _maxCount = options.maxCount
         default: break
         }
-        #if canImport(UIKit)
-            NotificationCenter.default.addObserver(self, selector: #selector(handleLowMemory), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
-        #endif
+#if canImport(UIKit)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleLowMemory), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+#endif
     }
 
     private func adjustCount() {
@@ -134,6 +132,7 @@ public class CachePersistence<Options: CachePersistenceOptions> {
         var sorted = sortedItems
         while currentCount > maxCount, sorted.count > 0 {
             let next = sorted.removeFirst()
+            _dictionary[next.key]?.reference.release()
             _dictionary[next.key] = nil
             currentCount -= 1
         }
@@ -149,38 +148,80 @@ public class CachePersistence<Options: CachePersistenceOptions> {
         var sorted = sortedItems
         while currentSize > maxSize, sorted.count > 0 {
             let next = sorted.removeFirst()
-            let size = next.value.model.size ?? 0
-            _dictionary[next.key] = nil
-            currentSize -= size
+            defer {
+                _dictionary[next.key]?.reference.release()
+                _dictionary[next.key] = nil
+            }
+            if let size = next.value.source?.model.size {
+                currentSize -= size
+            }
         }
     }
 
     // If low memory, discard all items of lower priority
     @objc private func handleLowMemory() {
         _lock.lock()
-        sortedItems.prefix { $0.value.model.retentionPolicy <= .discardUnderMemoryPressure }.forEach { _dictionary[$0.key] = nil }
+        sortedItems.prefix { ($0.value.source?.model.retentionPolicy ?? .discardFirst) <= .discardUnderMemoryPressure
+        }.forEach {
+            _dictionary[$0.key]?.reference.release()
+            _dictionary[$0.key] = nil
+        }
         _lock.unlock()
     }
 
     private func retrieve(_ descriptor: CacheDescriptor) -> Source<CachedItem> {
         _lock.lock()
+        let updateClosure: () -> Void = { [weak self] in
+            self?._lock.lock()
+            self?.adjustmentWorkItem?.cancel()
+            let workItem = DispatchWorkItem {
+                self?.adjustCount()
+                self?.adjustSize()
+            }
+            self?.adjustmentWorkItem = workItem
+            self?._lock.unlock()
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.15, execute: workItem)
+        }
         defer {
             _lock.unlock()
+            updateClosure()
         }
-        if _dictionary[descriptor.key] == nil {
-            _dictionary[descriptor.key] = CachePersistenceSource { [weak self] in
-                self?._lock.lock()
-                self?.adjustmentWorkItem?.cancel()
-                let workItem = DispatchWorkItem {
-                    self?.adjustCount()
-                    self?.adjustSize()
-                }
-                self?.adjustmentWorkItem = workItem
-                self?._lock.unlock()
-                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.15, execute: workItem)
-            }.eraseToSource()
+        guard let source = _dictionary[descriptor.key]?.source else {
+            let newItem = WeakCacheSource(updateClosure: updateClosure)
+            let source = newItem.reference.referencedSource!
+            newItem.reference.referencedSource = nil
+            _dictionary[descriptor.key] = newItem
+            return source
         }
-        return _dictionary[descriptor.key]!
+        return source
+    }
+}
+
+// MARK: — WeakCacheSource Wrapper Type —
+
+/// A wrapper that helps us determine whether any external client code is actually using / retaining the Source. If the Source has a value, it will retain its own reference to hold in in cache. If it doesn't have a value, it will be emove when no external code is holding a reference to it. (If external code is holding a reference to it, then we should keep it in the cache dictionary, because that client code may set a value for the cache item!)
+fileprivate struct WeakCacheSource {
+    weak var source: Source<CachedItem>?
+    let reference: Reference
+    init(updateClosure: @escaping () -> Void) {
+        let reference = Reference()
+        let cacheSource = CachePersistenceSource(reference: reference, updateClosure: updateClosure).eraseToSource()
+        reference.holdClosure = { [weak cacheSource] in cacheSource }
+        reference.referencedSource = cacheSource
+        self.source = cacheSource
+        self.reference = reference
+    }
+}
+
+fileprivate class Reference {
+    var referencedSource: Source<CachedItem>?
+    var holdClosure: () -> Source<CachedItem>? = { nil }
+    func hold() {
+        guard referencedSource == nil else { return }
+        referencedSource = holdClosure()
+    }
+    func release() {
+        referencedSource = nil
     }
 }
 
@@ -204,7 +245,6 @@ public extension CachePersistence where Options == WithMaxSize {
         retrieve(descriptor).map { $0.asPersistable() }
     }
 }
-
 
 public extension CachePersistence where Options == WithMaxSizeAndMaxCount {
     var maxSize: Int {
@@ -236,7 +276,6 @@ public extension CachePersistence where Options == WithMaxSizeAndMaxCount {
     }
 }
 
-
 public extension CachePersistence where Options == WithMaxCount {
     var maxCount: Int {
         get { _maxCount ?? 0 }
@@ -255,8 +294,7 @@ public extension CachePersistence where Options == WithMaxCount {
     }
 }
 
-
-public extension CachePersistence where Options == Unbounded {
+public extension CachePersistence where Options == WithUnlimitedSizeAndCount {
     func persistableSource<Value>(for descriptor: CacheDescriptor) -> Source<Persistable<Value>> {
         retrieve(descriptor).map { $0.asPersistable() }
     }
@@ -267,7 +305,6 @@ public extension CachePersistence where Options == Unbounded {
 
 private struct CachedItem {
     let value: Any?
-    let isEmpty: Bool
     let size: Int?
     let retentionPolicy: CacheDescriptor.CacheRetentionPolicy
     let expireAfter: TimeInterval?
@@ -279,28 +316,28 @@ private struct CachedItem {
 
 extension CachedItem {
     func asPersistable<Value>() -> Persistable<Value> {
-        if let value = value as? Value, !isEmpty {
+        if let value = value as? Value {
             return .found(.init(value: value, isExpired: isExpired, set: set.map {
-                .init(value: $0, isEmpty: isEmpty, size: nil, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear)
+                .init(value: $0, size: nil, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear)
             }, clear: clear))
         }
-        return .notFound(.init(set: set.map { .init(value: $0, isEmpty: isEmpty, size: nil, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear) } ))
+        return .notFound(.init(set: set.map { .init(value: $0, size: nil, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear) } ))
     }
 
     func asPersistable<Value: CacheSizeRepresentable>() -> Persistable<Value> {
-        if let value = value as? Value, !isEmpty {
+        if let value = value as? Value {
             return .found(.init(value: value, isExpired: isExpired, set: set.map {
-                .init(value: $0, isEmpty: isEmpty, size: $0.cacheSize, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear)
+                .init(value: $0, size: $0.cacheSize, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear)
             }, clear: clear))
         }
-        return .notFound(.init(set: set.map { .init(value: $0, isEmpty: isEmpty, size: $0.cacheSize, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear) } ))
+        return .notFound(.init(set: set.map { .init(value: $0, size: $0.cacheSize, retentionPolicy: retentionPolicy, expireAfter: expireAfter, dateLastSet: Date(), isExpired: isExpired, set: set, clear: clear) } ))
     }
 }
 
 
 // MARK: - CachePersistence Source -
 
-/// The Source that manages each cached value. If multiple client sites are using the same Cached item, they will have a reference to the same Source and get updates when the value is changed elsewhere, etc.
+/// The Source that manages each cached value. If multiple client sites are using the same Cached item, they will have a reference to the same Source and get updates when the value is changed from other client code, etc.
 fileprivate final class CachePersistenceSource: CustomSource {
 
     class Actions: ActionMethods {
@@ -312,33 +349,39 @@ fileprivate final class CachePersistenceSource: CustomSource {
         var expireWorkItem: DispatchWorkItem?
     }
 
-    lazy var defaultModel = CachedItem(value: nil, isEmpty: true, size: nil, retentionPolicy: .discardUnderMemoryPressure, expireAfter: nil, dateLastSet: Date(), isExpired: { false }, set: actions.set, clear: actions.clear)
-    let updateClosure: () -> Void
+    lazy var defaultModel: CachedItem = {
+        return CachedItem(value: nil, size: nil, retentionPolicy: .discardUnderMemoryPressure, expireAfter: nil, dateLastSet: Date(), isExpired: { true }, set: actions.set, clear: actions.clear)
+    }()
 
-    init(updateClosure: @escaping () -> Void) {
+    let updateClosure: () -> Void
+    var reference: Reference
+
+    init(reference: Reference, updateClosure: @escaping () -> Void) {
+        self.reference = reference
         self.updateClosure = updateClosure
-        updateClosure()
     }
 
     fileprivate func set(_ cachedItem: CachedItem) {
+        reference.hold()
         if cachedItem.size != nil { updateClosure() }
         let cachedDate = Date()
         let isExpired = cachedItem.expireAfter.flatMap { expireAfter in
             threadsafe.expireWorkItem?.cancel()
             threadsafe.expireWorkItem = .init { [weak self] in
                 guard let self = self else { return }
-                self.model = .init(value: self.model.value, isEmpty: self.model.isEmpty, size: self.model.size, retentionPolicy: self.model.retentionPolicy, expireAfter: self.model.expireAfter, dateLastSet: Date(), isExpired: { true }, set: self.model.set, clear: self.model.clear)
+                self.model = .init(value: self.model.value, size: self.model.size, retentionPolicy: self.model.retentionPolicy, expireAfter: self.model.expireAfter, dateLastSet: Date(), isExpired: { true }, set: self.model.set, clear: self.model.clear)
             }
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + expireAfter, execute: threadsafe.expireWorkItem!)
             return { cachedDate.distance(to: Date()) < expireAfter }
         } ?? { false }
 
-        model = .init(value: cachedItem.value, isEmpty: false, size: cachedItem.size, retentionPolicy: cachedItem.retentionPolicy, expireAfter: nil, dateLastSet: Date(), isExpired: isExpired, set: actions.set, clear: actions.clear)
+        model = .init(value: cachedItem.value, size: cachedItem.size, retentionPolicy: cachedItem.retentionPolicy, expireAfter: nil, dateLastSet: Date(), isExpired: isExpired, set: actions.set, clear: actions.clear)
     }
 
     fileprivate func clear() {
+        reference.release()
         updateClosure()
-        model = .init(value: nil, isEmpty: true, size: nil, retentionPolicy: model.retentionPolicy, expireAfter: model.expireAfter, dateLastSet: Date(), isExpired: model.isExpired, set: model.set, clear: model.clear)
+        model = .init(value: nil, size: nil, retentionPolicy: model.retentionPolicy, expireAfter: model.expireAfter, dateLastSet: Date(), isExpired: model.isExpired, set: model.set, clear: model.clear)
     }
 }
 
@@ -363,8 +406,8 @@ public extension CachePersistenceOptions where Self == WithMaxSizeAndMaxCount {
     }
 }
 
-public extension CachePersistenceOptions where Self == Unbounded {
-    static var unbounded: Unbounded {
+public extension CachePersistenceOptions where Self == WithUnlimitedSizeAndCount {
+    static var withUnlimitedSizeAndCount: WithUnlimitedSizeAndCount {
         .init()
     }
 }
