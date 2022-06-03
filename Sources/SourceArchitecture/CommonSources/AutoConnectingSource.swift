@@ -30,7 +30,7 @@ internal final class AutoConnectingSource<Model>: CustomSource {
     private let connectable: Source<Connectable<Model>>
     lazy var defaultModel: Model = {
         connectable.model.connect()
-        connectable.subscribe(self, method: AutoConnectingSource.update, shouldSendInitialValue: false)
+        connectable.subscribe(self, method: AutoConnectingSource.update, immediately: false)
         return connectable.model.connected!.value
     }()
     init(_ connectable: Source<Connectable<Model>>) {

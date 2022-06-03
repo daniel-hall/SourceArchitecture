@@ -29,7 +29,7 @@ import Foundation
 /// A Source that will not publish an update if the new value is the same as the last value (based on the provided closure to check equality)
 final class FilteredDuplicatesSource<Model>: CustomSource {
     lazy var defaultModel: Model = {
-        input.subscribe(self, method: FilteredDuplicatesSource.update, shouldSendInitialValue: false)
+        input.subscribe(self, method: FilteredDuplicatesSource.update, immediately: false)
         return input.model.current
     }()
     let input: Source<CurrentAndPrevious<Model>>

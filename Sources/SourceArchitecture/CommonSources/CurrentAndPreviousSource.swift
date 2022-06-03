@@ -34,7 +34,7 @@ final class CurrentAndPreviousSource<Model>: CustomSource {
     }
 
     lazy var defaultModel: CurrentAndPrevious<Model> = {
-        input.subscribe(self, method: CurrentAndPreviousSource.update, shouldSendInitialValue: false)
+        input.subscribe(self, method: CurrentAndPreviousSource.update, immediately: false)
         return .init(current: input.model, previous: nil)
     }()
     private let input: Source<Model>

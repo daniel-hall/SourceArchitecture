@@ -28,7 +28,7 @@ import Foundation
 
 final class MappedSource<Model, NewModel>: CustomSource {
     lazy var defaultModel: NewModel = {
-        input.subscribe(self, method: MappedSource.update, shouldSendInitialValue: false)
+        input.subscribe(self, method: MappedSource.update, immediately: false)
         return transform(input.model)
     }()
     let input: Source<Model>

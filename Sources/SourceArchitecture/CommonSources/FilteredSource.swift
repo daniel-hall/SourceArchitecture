@@ -29,7 +29,7 @@ import Foundation
 /// A Source that filters upstream values using the provided closure.
 final class FilteredSource<Model>: CustomSource {
     lazy var defaultModel: Model = {
-        input.subscribe(self, method: FilteredSource.update, shouldSendInitialValue: false)
+        input.subscribe(self, method: FilteredSource.update, immediately: false)
         return input.model
     }()
     let input: Source<Model>

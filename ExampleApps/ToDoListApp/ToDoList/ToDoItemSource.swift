@@ -58,7 +58,7 @@ final class ToDoItemSource: CustomSource {
     init(_ saved: Source<CodableToDoItem>) {
         self.saved = saved.filteringDuplicates()
         super.init()
-        saved.subscribe(self, method: ToDoItemSource.saveUpdated, shouldSendInitialValue: false)
+        saved.subscribe(self, method: ToDoItemSource.saveUpdated, immediately: false)
     }
 
     private func saveUpdated(value: CodableToDoItem) {

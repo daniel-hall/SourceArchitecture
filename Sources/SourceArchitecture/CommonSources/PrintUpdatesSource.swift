@@ -39,7 +39,7 @@ final class PrintUpdateSource<Model>: CustomSource {
         input = source
         self.closure = closure
         super.init()
-        source.subscribe(self, method: PrintUpdateSource.update, shouldSendInitialValue: false)
+        source.subscribe(self, method: PrintUpdateSource.update, immediately: false)
     }
 
     func update(value: Model) {

@@ -106,7 +106,7 @@ public final class ToDoListSource: CustomSource {
             }
             // Update our models items with any new ToDoItem sources that were created and resubscribe to changes
             model.items = threadsafe.toDoItemSources.map {
-                $0.subscribe(self, method: ToDoListSource.itemUpdated, shouldSendInitialValue: false)
+                $0.subscribe(self, method: ToDoListSource.itemUpdated, immediately: false)
                 return $0.$model
             }
         }

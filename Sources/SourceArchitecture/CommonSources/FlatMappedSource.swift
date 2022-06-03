@@ -34,7 +34,7 @@ final class FlatMappedSource<Input, Model>: CustomSource {
     }
 
     lazy var defaultModel: Model =  {
-        input.subscribe(self, method: FlatMappedSource.updateSource, shouldSendInitialValue: false)
+        input.subscribe(self, method: FlatMappedSource.updateSource, immediately: false)
         return transform(input.model).model
     }()
     let input: Source<Input>

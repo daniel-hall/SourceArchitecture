@@ -51,8 +51,8 @@ public final class Source<Model> {
         _model.subscribe(closure)
     }
 
-    public func subscribe<T: CustomSourceProtocol>(_ source: T, method: @escaping (T) -> (Model) -> Void, shouldSendInitialValue: Bool = true) {
-        _model.subscribe(subscriber: source, shouldSendInitialValue: shouldSendInitialValue) { [weak source] in
+    public func subscribe<T: CustomSourceProtocol>(_ source: T, method: @escaping (T) -> (Model) -> Void, immediately: Bool = true) {
+        _model.subscribe(subscriber: source, immediately: immediately) { [weak source] in
             guard let source = source else {
                 return
             }
@@ -258,7 +258,7 @@ public struct ModelState<Model>: DynamicProperty, ReflectionExempt {
         get {
             let modelState = instance[keyPath: storageKeyPath]
             if let renderer = instance as? _Rendering & AnyObject {
-                modelState.subscribe(subscriber: renderer, shouldSendInitialValue: false) { [weak renderer] _ in
+                modelState.subscribe(subscriber: renderer, immediately: false) { [weak renderer] _ in
                     if Thread.isMainThread {
                         renderer?.render
                     } else {
@@ -292,19 +292,19 @@ public struct ModelState<Model>: DynamicProperty, ReflectionExempt {
         passthrough.send(model)
     }
 
-    fileprivate func subscribe(shouldSendInitialValue: Bool = true, _ closure: @escaping (Model) -> Void) -> AnyCancellable {
-        defer { if shouldSendInitialValue { closure(wrappedValue) } }
+    fileprivate func subscribe(immediately: Bool = true, _ closure: @escaping (Model) -> Void) -> AnyCancellable {
+        defer { if immediately { closure(wrappedValue) } }
         return passthrough.sink {
             closure($0)
         }
     }
 
-    fileprivate func subscribe(subscriber: AnyObject, shouldSendInitialValue: Bool = true, closure: @escaping (Model) -> Void) {
+    fileprivate func subscribe(subscriber: AnyObject, immediately: Bool = true, closure: @escaping (Model) -> Void) {
         let subscriberKey = ObjectIdentifier(subscriber)
         lock.lock()
         if subscriptions[subscriberKey] == nil {
             subscriptions[subscriberKey] = .init { }
-            subscriptions[subscriberKey] = subscribe(shouldSendInitialValue: false) { [weak subscriber, weak lock, weak subscriptions] in
+            subscriptions[subscriberKey] = subscribe(immediately: false) { [weak subscriber, weak lock, weak subscriptions] in
                 guard subscriber != nil else {
                     lock?.lock()
                     subscriptions?[subscriberKey] = nil
@@ -314,7 +314,7 @@ public struct ModelState<Model>: DynamicProperty, ReflectionExempt {
                 closure($0)
             }
             lock.unlock()
-            if shouldSendInitialValue {
+            if immediately {
                 closure(wrappedValue)
             }
         } else {
