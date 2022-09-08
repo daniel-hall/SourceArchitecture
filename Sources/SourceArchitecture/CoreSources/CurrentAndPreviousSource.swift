@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  CurrentAndPreviousSource.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,33 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
+/// Publishes a CurrentAndPrevious value for any input Source
+private final class CurrentAndPreviousSource<Model>: SourceOf<CurrentAndPrevious<Model>> {
 
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    @Threadsafe var previous: Model?
+    @Source var input: Model
+
+    lazy var initialModel = {
+        _input.subscribe(self, method: CurrentAndPreviousSource.update, sendInitialModel: false)
+        return CurrentAndPrevious(current: input, previous: nil)
+    }()
+
+    init(input: Source<Model>) {
+        _input = input
     }
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    func update(value: Model) {
+        model = .init(current: value, previous: previous)
+        previous = value
+    }
+}
+
+public extension Source {
+    /// Converts a Source of a Model to a Source that publishes both the current and previous instance of the Model
+    func currentAndPrevious() -> Source<CurrentAndPrevious<Model>> {
+        CurrentAndPreviousSource(input: self).eraseToSource()
     }
 }

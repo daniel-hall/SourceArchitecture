@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  AutoConnectingSource.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,31 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
+private final class AutoConnectingSource<Model>: SourceOf<Model> {
 
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    @Source var connectable: Connectable<Model>
+
+    lazy var initialModel: Model = {
+        _connectable.subscribe(self, method: AutoConnectingSource.update, sendInitialModel: false)
+        connectable.connect()
+        return connectable.connected!.value
+    }()
+
+    init(_ connectable: Source<Connectable<Model>>) {
+        _connectable = connectable
     }
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    func update(_ value: Connectable<Model>) {
+        value.connected.map { model = $0.value }
+    }
+}
+
+public extension Source where Model: ConnectableRepresentable  {
+    /// Converts a Source of a `Connectable<Value>` to a Source of the `Value` itself. Will automatically connect the origin Source's model when the Source is subscribed to or the model is accessed.
+    func autoConnecting() -> Source<Model.Value> {
+        AutoConnectingSource(map { $0.asConnectable() }).eraseToSource()
     }
 }

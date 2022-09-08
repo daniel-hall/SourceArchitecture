@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  MutableSource.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,33 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
+private final class _MutableSource<Model>: SourceOf<Mutable<Model>> {
 
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    @Action(_MutableSource.set) var setAction
+
+    let initialValue: Model
+    lazy var initialModel = Mutable(value: initialValue, set: setAction)
+
+    public init(_ initialValue: Model) {
+        self.initialValue = initialValue
     }
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    private func set(_ value: Model) {
+        model = .init(value: value, set: setAction)
+    }
+}
+
+public final class MutableSource<Model>: ComposedSource<Mutable<Model>> {
+    public init(_ initialValue: Model) {
+        super.init{ _MutableSource(initialValue).eraseToSource() }
+    }
+}
+
+public extension Source where Model: MutableRepresentable {
+    func nonmutating() -> Source<Model.Value> {
+        map { $0.asMutable().value }
     }
 }

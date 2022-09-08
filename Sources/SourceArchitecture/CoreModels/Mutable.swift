@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  Mutable.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,46 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
-
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+@dynamicMemberLookup
+/// A Model that contains a value and an action to set a new value
+public struct Mutable<Value> {
+    public let value: Value
+    public let set: Action<Value>
+    public init(value: Value, set: Action<Value>) {
+        self.value = value
+        self.set = set
     }
+    public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
+        value[keyPath: keyPath]
+    }
+}
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+extension Mutable: Equatable where Value: Equatable {
+    public static func ==(lhs: Mutable<Value>, rhs: Mutable<Value>) -> Bool {
+        lhs.value == rhs.value
+    }
+}
+
+extension Mutable: Hashable where Value: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        value.hash(into: &hasher)
+    }
+}
+
+extension Mutable: Identifiable where Value: Identifiable {
+    public var id: Value.ID { value.id }
+}
+
+public protocol MutableRepresentable {
+    associatedtype Value
+    func asMutable() -> Mutable<Value>
+}
+
+extension Mutable: MutableRepresentable {
+    public func asMutable() -> Mutable<Value> {
+        return self
     }
 }

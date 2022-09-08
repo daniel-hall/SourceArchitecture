@@ -2,128 +2,119 @@
 <Workspace
    version = "1.0">
    <Group
-      location = "group:Sources/SourceArchitecture"
-      name = "SourceArchitecture">
+      location = "group:Sources"
+      name = "Sources">
       <Group
-         location = "group:CoreTypes"
-         name = "CoreTypes">
+         location = "group:SourceArchitecture"
+         name = "SourceArchitecture">
          <FileRef
-            location = "group:Source.swift">
+            location = "group:CoreTypes.swift">
          </FileRef>
-         <FileRef
-            location = "group:Action.swift">
-         </FileRef>
-         <FileRef
-            location = "group:Renderer.swift">
-         </FileRef>
-      </Group>
-      <Group
-         location = "group:CommonModels"
-         name = "CommonModels">
-         <FileRef
-            location = "group:Mutable.swift">
-         </FileRef>
-         <FileRef
-            location = "group:FetchableWithPlaceholder.swift">
-         </FileRef>
-         <FileRef
-            location = "group:CurrentAndPrevious.swift">
-         </FileRef>
-         <FileRef
-            location = "group:Progress.swift">
-         </FileRef>
-         <FileRef
-            location = "group:ConnectableWithPlaceholder.swift">
-         </FileRef>
-         <FileRef
-            location = "group:Connectable.swift">
-         </FileRef>
-         <FileRef
-            location = "group:HasEqualPlaceholder.swift">
-         </FileRef>
-         <FileRef
-            location = "group:Fetchable.swift">
-         </FileRef>
-         <FileRef
-            location = "group:Persistable.swift">
-         </FileRef>
-      </Group>
-      <Group
-         location = "group:CommonDependencies"
-         name = "CommonDependencies">
-         <FileRef
-            location = "group:WeakAtomicCollection.swift">
-         </FileRef>
-         <FileRef
-            location = "group:CachePersistence.swift">
-         </FileRef>
-         <FileRef
-            location = "group:FilePersistence.swift">
-         </FileRef>
-         <FileRef
-            location = "group:UserDefaultsPersistence.swift">
-         </FileRef>
-      </Group>
-      <Group
-         location = "group:CommonSources"
-         name = "CommonSources">
-         <FileRef
-            location = "group:ProgressSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:FilteredSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:ConnectableSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:SingleValueSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:CurrentAndPreviousSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:PersistedFetchedSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:AfterDelaySource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:AutoConnectingSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:FetchableDataSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:MappedSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:FilteredDuplicatesSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:FlatMappedSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:RetryingSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:NetworkSyncedPersistableSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:MutableSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:CombinedSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:PrintUpdatesSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:CombinedFetchableSource.swift">
-         </FileRef>
-         <FileRef
-            location = "group:RefreshingSource.swift">
-         </FileRef>
+         <Group
+            location = "group:CoreSources"
+            name = "CoreSources">
+            <FileRef
+               location = "group:AutoConnectingSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:CombinedFetchableSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:CombinedSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:ConnectableSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:CurrentAndPreviousSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:FetchableDataSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:/Users/danielhall/Documents/Projects/SourceArchitectureRefresh/Sources/SourceArchitecture/CoreSources/FetchAfterDelaySource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:FilteredDuplicatesSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:FilteredSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:FlatMappedSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:MappedSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:MutableSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:NetworkSyncedPersistableSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:PersistedFetchedSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:PrintUpdatesSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:ProgressSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:RefreshingSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:RetryingSource.swift">
+            </FileRef>
+         </Group>
+         <Group
+            location = "group:CoreModels"
+            name = "CoreModels">
+            <FileRef
+               location = "group:Connectable.swift">
+            </FileRef>
+            <FileRef
+               location = "group:ConnectableWithPlaceholder.swift">
+            </FileRef>
+            <FileRef
+               location = "group:CurrentAndPrevious.swift">
+            </FileRef>
+            <FileRef
+               location = "group:Fetchable.swift">
+            </FileRef>
+            <FileRef
+               location = "group:FetchableWithPlaceholder.swift">
+            </FileRef>
+            <FileRef
+               location = "group:Mutable.swift">
+            </FileRef>
+            <FileRef
+               location = "group:Persistable.swift">
+            </FileRef>
+            <FileRef
+               location = "group:Progress.swift">
+            </FileRef>
+            <FileRef
+               location = "group:HasEqualPlaceholder.swift">
+            </FileRef>
+         </Group>
+         <Group
+            location = "group:CommonPersistence"
+            name = "CommonPersistence">
+            <FileRef
+               location = "group:CachePersistence.swift">
+            </FileRef>
+            <FileRef
+               location = "group:FilePersistence.swift">
+            </FileRef>
+            <FileRef
+               location = "group:UserDefaultsPersistence.swift">
+            </FileRef>
+            <FileRef
+               location = "group:WeakDictionary.swift">
+            </FileRef>
+         </Group>
       </Group>
    </Group>
    <Group

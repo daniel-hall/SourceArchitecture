@@ -30,20 +30,23 @@ import SwiftUI
 
 
 public struct ToDoListView: View, Renderer {
-    @ModelState public var model: ToDoList
+
+    @Source public var model: ToDoList
     @State private var hasNewCell = false
-    public init(modelState: ModelState<ToDoList>) {
-        _model = modelState
+
+    public init(source: Source<ToDoList>) {
+        _model = source
     }
+
     public var body: some View {
         NavigationView {
             ScrollViewReader { proxy in
-                List(model.items) { modelState in
-                    ToDoItemView(modelState: modelState, isNew: modelState.model.id == model.items.last?.model.id ? $hasNewCell : nil, proxy: proxy)
+                List(model.items) { item in
+                    ToDoItemView(source: item, isNew: item.id == model.items.last?.id ? $hasNewCell : nil, proxy: proxy)
                         .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", role: .destructive) {
-                                modelState.model.delete()
+                                item.model.delete()
                             }
                         }
                 }
@@ -56,76 +59,14 @@ public struct ToDoListView: View, Renderer {
                         hasNewCell = true
                         model.add()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.default) { proxy.scrollTo(model.items.last?.model.id ?? "0", anchor: .bottom) }
+                            withAnimation(.default) {
+                                proxy.scrollTo(model.items.last?.id ?? "0", anchor: .bottom)
+                            }
                         }
                     } label: { Image(systemName: "plus").font(.headline) }
                 }
             }
         }
         .navigationViewStyle(.stack)
-    }
-}
-
-struct ToDoItemView: View, Renderer {
-    @FocusState fileprivate var isFocused: Bool
-    @ModelState var model: ToDoItem
-    @State var description: String = ""
-    @Binding var isNew: Bool
-    let proxy: ScrollViewProxy
-
-    init(modelState: ModelState<ToDoItem>, isNew: Binding<Bool>?, proxy: ScrollViewProxy) {
-        _model = modelState
-        self.proxy = proxy
-        _isNew = isNew ?? .init(get: { false }, set: { _ in })
-        _description = .init(initialValue: model.description)
-    }
-
-    var body: some View {
-        HStack {
-            Button {
-                let isAlreadyCompleted = model.dateCompleted != nil
-                model.setCompleted(!isAlreadyCompleted)
-            } label: {
-                Image(systemName: model.dateCompleted == nil ? "square" : "checkmark.square")
-            }
-            ZStack {
-                // — Workaround to make SwiftUI dynamically size the cell to match the TextEditor contents
-                Text(description.isEmpty ? " " : description).strikethrough(model.dateCompleted != nil, color: .gray).frame(maxWidth: .infinity, alignment: .leading).padding(.init(top: 9, leading: 5, bottom: 8, trailing: 5)).foregroundColor(.white)
-                // —
-                TextEditor(text: $description).frame(alignment: .center).alignmentGuide(VerticalAlignment.center) { $0.height * 0.475 }.focused($isFocused)
-            }
-        }.foregroundColor(model.dateCompleted == nil ? .black : .gray)
-            .onChange(of: description) {
-                if $0.contains("\n") {
-                    description = $0.replacingOccurrences(of: "\n", with: "")
-                    isFocused = false
-                    return
-                }
-                model.setDescription($0)
-                withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) }
-            }
-            .onChange(of: model.description) { [previous = model.description] in
-                if previous != $0  {
-                    description = $0
-                }
-            }
-            .onChange(of: model.dateCompleted) {
-                if $0 != nil { isFocused = false }
-            }
-            .onChange(of: $isFocused.wrappedValue) {
-                if $0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) }
-                    }
-                }
-            }
-            .onAppear {
-                if isNew {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        isNew = false
-                        isFocused = true
-                    }
-                }
-            }
     }
 }

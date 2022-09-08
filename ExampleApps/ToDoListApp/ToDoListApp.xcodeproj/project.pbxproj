@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CEA90BA228AD63A200C413EC /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA90BA128AD63A200C413EC /* Extensions.swift */; };
 		CEBAA67128471F1D00F6FE2E /* ToDoList.h in Headers */ = {isa = PBXBuildFile; fileRef = CEBAA67028471F1D00F6FE2E /* ToDoList.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CEBAA67C28471F4500F6FE2E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA67B28471F4500F6FE2E /* AppDelegate.swift */; };
 		CEBAA67E28471F4500F6FE2E /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA67D28471F4500F6FE2E /* SceneDelegate.swift */; };
@@ -18,10 +19,9 @@
 		CEBAA69B28471F6000F6FE2E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CEBAA69928471F6000F6FE2E /* Main.storyboard */; };
 		CEBAA69D28471F6100F6FE2E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CEBAA69C28471F6100F6FE2E /* Assets.xcassets */; };
 		CEBAA6A028471F6100F6FE2E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CEBAA69E28471F6100F6FE2E /* LaunchScreen.storyboard */; };
-		CEBAA6A828471FD400F6FE2E /* ToDoItemSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6A528471FD400F6FE2E /* ToDoItemSource.swift */; };
+		CEBAA6A828471FD400F6FE2E /* ToDoItemViewSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6A528471FD400F6FE2E /* ToDoItemViewSource.swift */; };
 		CEBAA6A928471FD400F6FE2E /* ToDoListSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6A628471FD400F6FE2E /* ToDoListSource.swift */; };
 		CEBAA6AA28471FD400F6FE2E /* ToDoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6A728471FD400F6FE2E /* ToDoListView.swift */; };
-		CEBAA6AF2847200000F6FE2E /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = CEBAA6AE2847200000F6FE2E /* OrderedCollections */; };
 		CEBAA6B22847200E00F6FE2E /* SourceArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = CEBAA6B12847200E00F6FE2E /* SourceArchitecture */; };
 		CEBAA6B52847209900F6FE2E /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6B32847209900F6FE2E /* AppDependencies.swift */; };
 		CEBAA6B62847209900F6FE2E /* MainHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6B42847209900F6FE2E /* MainHostingController.swift */; };
@@ -34,6 +34,7 @@
 		CEBAA6C8284722BB00F6FE2E /* MainHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6C5284722BB00F6FE2E /* MainHostingController.swift */; };
 		CEBAA6C9284722BB00F6FE2E /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6C6284722BB00F6FE2E /* API.swift */; };
 		CEBAA6CA284722BB00F6FE2E /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA6C7284722BB00F6FE2E /* AppDependencies.swift */; };
+		CEC2125628AAE991003F02EB /* ToDoItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEC2125528AAE991003F02EB /* ToDoItemView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CEA90BA128AD63A200C413EC /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		CEBAA66E28471F1D00F6FE2E /* ToDoList.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ToDoList.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEBAA67028471F1D00F6FE2E /* ToDoList.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ToDoList.h; sourceTree = "<group>"; };
 		CEBAA67928471F4500F6FE2E /* LocalToDoListApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocalToDoListApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -95,7 +97,7 @@
 		CEBAA69C28471F6100F6FE2E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CEBAA69F28471F6100F6FE2E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		CEBAA6A128471F6100F6FE2E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		CEBAA6A528471FD400F6FE2E /* ToDoItemSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ToDoItemSource.swift; sourceTree = "<group>"; };
+		CEBAA6A528471FD400F6FE2E /* ToDoItemViewSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ToDoItemViewSource.swift; sourceTree = "<group>"; };
 		CEBAA6A628471FD400F6FE2E /* ToDoListSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ToDoListSource.swift; sourceTree = "<group>"; };
 		CEBAA6A728471FD400F6FE2E /* ToDoListView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ToDoListView.swift; sourceTree = "<group>"; };
 		CEBAA6AC28471FED00F6FE2E /* SourceArchitecture */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SourceArchitecture; path = ../..; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 		CEBAA6C5284722BB00F6FE2E /* MainHostingController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MainHostingController.swift; sourceTree = "<group>"; };
 		CEBAA6C6284722BB00F6FE2E /* API.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
 		CEBAA6C7284722BB00F6FE2E /* AppDependencies.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		CEC2125528AAE991003F02EB /* ToDoItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoItemView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,7 +115,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				CEBAA6B22847200E00F6FE2E /* SourceArchitecture in Frameworks */,
-				CEBAA6AF2847200000F6FE2E /* OrderedCollections in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -162,9 +164,11 @@
 		CEBAA66F28471F1D00F6FE2E /* ToDoList */ = {
 			isa = PBXGroup;
 			children = (
-				CEBAA6A528471FD400F6FE2E /* ToDoItemSource.swift */,
+				CEA90BA128AD63A200C413EC /* Extensions.swift */,
+				CEBAA6A528471FD400F6FE2E /* ToDoItemViewSource.swift */,
 				CEBAA6A628471FD400F6FE2E /* ToDoListSource.swift */,
 				CEBAA6A728471FD400F6FE2E /* ToDoListView.swift */,
+				CEC2125528AAE991003F02EB /* ToDoItemView.swift */,
 				CEBAA67028471F1D00F6FE2E /* ToDoList.h */,
 			);
 			path = ToDoList;
@@ -245,7 +249,6 @@
 			);
 			name = ToDoList;
 			packageProductDependencies = (
-				CEBAA6AE2847200000F6FE2E /* OrderedCollections */,
 				CEBAA6B12847200E00F6FE2E /* SourceArchitecture */,
 			);
 			productName = ToDoList;
@@ -328,7 +331,6 @@
 			);
 			mainGroup = CEBAA64928471E9100F6FE2E;
 			packageReferences = (
-				CEBAA6AD2847200000F6FE2E /* XCRemoteSwiftPackageReference "swift-collections" */,
 			);
 			productRefGroup = CEBAA65328471E9100F6FE2E /* Products */;
 			projectDirPath = "";
@@ -376,9 +378,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CEA90BA228AD63A200C413EC /* Extensions.swift in Sources */,
 				CEBAA6AA28471FD400F6FE2E /* ToDoListView.swift in Sources */,
+				CEC2125628AAE991003F02EB /* ToDoItemView.swift in Sources */,
 				CEBAA6A928471FD400F6FE2E /* ToDoListSource.swift in Sources */,
-				CEBAA6A828471FD400F6FE2E /* ToDoItemSource.swift in Sources */,
+				CEBAA6A828471FD400F6FE2E /* ToDoItemViewSource.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -786,23 +790,7 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		CEBAA6AD2847200000F6FE2E /* XCRemoteSwiftPackageReference "swift-collections" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-collections.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		CEBAA6AE2847200000F6FE2E /* OrderedCollections */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = CEBAA6AD2847200000F6FE2E /* XCRemoteSwiftPackageReference "swift-collections" */;
-			productName = OrderedCollections;
-		};
 		CEBAA6B12847200E00F6FE2E /* SourceArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SourceArchitecture;

@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  FilteredSource.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,35 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
+/// A Source that filters upstream values using the provided closure.
+private final class FilteredSource<Model>: SourceOf<Model> {
 
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    @Source var input: Model
+
+    let shouldInclude: (Model) -> Bool
+
+    lazy var initialModel: Model = {
+        _input.subscribe(self, method: FilteredSource.update, sendInitialModel: false)
+        return input
+    }()
+
+    init(inputSource: Source<Model>, shouldInclude: @escaping (Model) -> Bool) {
+        _input = inputSource
+        self.shouldInclude = shouldInclude
     }
+    
+    func update(value: Model) {
+        if shouldInclude(value) {
+            model = value
+        }
+    }
+}
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+public extension Source {
+    func filtering(using shouldInclude: @escaping (Model) -> Bool) -> Source<Model> {
+        FilteredSource(inputSource: self, shouldInclude: shouldInclude).eraseToSource()
     }
 }

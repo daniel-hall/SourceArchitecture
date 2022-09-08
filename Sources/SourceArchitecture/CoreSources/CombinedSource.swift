@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  CombinedSource.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,37 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
+/// Combines the latest value from two Sources into a single tuple value each time each Source updates
+private final class CombinedSource<First, Second>: SourceOf<(First, Second)> {
 
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    @Source var first: First
+    @Source var second: Second
+
+    lazy var initialModel: (First, Second) = {
+        _first.subscribe(self, method: CombinedSource.updateFirst)
+        _second.subscribe(self, method: CombinedSource.updateSecond)
+        return model
+    }()
+
+    init(first: Source<First>, second: Source<Second>) {
+        _first = first
+        _second = second
     }
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    func updateFirst(first: First) {
+        model = (first, second)
+    }
+
+    func updateSecond(second: Second) {
+        model = (first, second)
+    }
+}
+
+public extension Source {
+    func combined<T>(with source: Source<T>) -> Source<(Model, T)> {
+        CombinedSource(first: self, second: source).eraseToSource()
     }
 }

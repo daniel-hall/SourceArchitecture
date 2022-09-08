@@ -30,6 +30,30 @@ import SourceArchitecture
 
 extension UIImage: CacheSizeRepresentable {
     public var cacheSize: Int {
-        pngData()?.count ?? 0
+        (cgImage?.bytesPerRow ?? 0) * (cgImage?.height ?? 0)
+    }
+}
+
+/// Add the ability for a struct to implement lazy stored properties. Will be updated in the future to support copy-on-write mutations to lazy stored values
+protocol LazyStoring {
+    var _storage: LazyStorage { get }
+}
+
+extension LazyStoring {
+    func lazy<T>(_ key: String = "\(#line).\(#column)", closure: () -> T) -> T {
+        var existing: T? = _storage[key]
+        if existing == nil {
+            existing = closure()
+            _storage[key] = existing!
+        }
+        return existing!
+    }
+}
+
+class LazyStorage {
+    private var storage = [String: Any]()
+    fileprivate subscript<T>(key: String) -> T? {
+        get { storage[key] as? T }
+        set { storage[key] = newValue }
     }
 }

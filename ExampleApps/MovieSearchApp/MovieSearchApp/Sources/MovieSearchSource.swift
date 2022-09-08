@@ -44,7 +44,7 @@ struct MovieSearch {
         let releaseDate: String
         let rating: String
         // A Source that will fetch a thumbnail image for the movie and has a placeholder image
-        let thumbnail: ModelState<FetchableWithPlaceholder<UIImage, UIImage>>
+        let thumbnail: Source<FetchableWithPlaceholder<UIImage, UIImage>>
         let select: Action<Void>
     }
 }
@@ -78,26 +78,22 @@ protocol FetchableMovieThumbnailDependency {
 }
 
 // This Source makes network requests to get search results, converts the network response models to the expected app model, and keeps track of current page and total pages of result to manage loading more when requested
-final class MovieSearchSource: CustomSource {
+final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
+
     typealias Dependencies = FetchableMovieSearchResponseDependency & FetchableMovieThumbnailDependency & SelectedMovieDependency
 
-    // Here we define what Actions this Source can create, and what methods they map to on this Source
-    class Actions: ActionMethods {
-        var search = ActionMethod(MovieSearchSource.search)
-        var loadMore = ActionMethod(MovieSearchSource.loadMore)
-    }
+    @Action(MovieSearchSource.search) private var searchAction
+    @Action(MovieSearchSource.loadMore) private var loadMoreAction
 
-    class Threadsafe: ThreadsafeProperties {
-        // The Source that will update with the actual network request results. A new one is created for every new API query
-        fileprivate var fetchableSource: Source<Fetchable<MovieSearchResponse>>?
-        fileprivate var searchTerm: String?
-        fileprivate var accumulatedResults = [MovieSearch.Result]()
-        fileprivate var currentPage = 1
-        fileprivate var totalPages = 1
-    }
+    // The Source that will update with the actual network request results. A new one is created for every new API query
+    @Threadsafe private var fetchableSource: Source<Fetchable<MovieSearchResponse>>?
+    @Threadsafe private var searchTerm: String?
+    @Threadsafe private var accumulatedResults = [MovieSearch.Result]()
+    @Threadsafe private var currentPage = 1
+    @Threadsafe private var totalPages = 1
 
     /// The default initial value of the Model that this Source should return if no other model has been calculated or set yet
-    lazy var defaultModel = Fetchable<MovieSearch>.fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: actions.search, loadMore: actions.loadMore), refresh: .doNothing))
+    lazy var initialModel = Fetchable<MovieSearch>.fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: searchAction, loadMore: loadMoreAction), refresh: .doNothing))
 
     private let dependencies: Dependencies
 
@@ -119,23 +115,23 @@ final class MovieSearchSource: CustomSource {
                 // Create a Source to fetched the thumbnail image. If there is no URL then return a .failure with a placeholder image
                 let thumbnailSource = thumbnailURL.map {
                     dependencies.movieThumbnail(from: $0).addingPlaceholder(UIImage(systemName: "photo")!)
-                } ?? .singleValue(.failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No thumbnail URL"]), failedAttempts: 1, retry: nil)))
-
+                } ?? Source(wrappedValue: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No thumbnail URL"]), failedAttempts: 1, retry: nil)))
+                
                 // Create a selection Action for this result by mapping the selected movie setSelection Action<Int?> to Action<Void>, providing the current ID as the input
-                let selectAction = dependencies.selectedMovie.model.setSelection.map { id }
+                let selectAction = dependencies.selectedMovie.model.set.map { id }
 
                 // Return our domain's MovieSearch.Result model
-                return .init(id: id, title: title, description: overview, releaseDate: releaseDate, rating: "⭐️ " + String(format:"%.01f", $0.vote_average ?? 0), thumbnail: thumbnailSource.$model, select: selectAction)
+                return .init(id: id, title: title, description: overview, releaseDate: releaseDate, rating: "⭐️ " + String(format:"%.01f", $0.vote_average ?? 0), thumbnail: thumbnailSource, select: selectAction)
             }
             // Add to our existing results (we have to manually filter because the API returns duplicates!)
-            threadsafe.accumulatedResults += results.filter { result in !threadsafe.accumulatedResults.contains{ $0.id == result.id } }
-            threadsafe.currentPage = $0.page ?? 1
-            threadsafe.totalPages = $0.total_pages ?? 1
+            accumulatedResults += results.filter { result in !accumulatedResults.contains{ $0.id == result.id } }
+            currentPage = $0.page ?? 1
+            totalPages = $0.total_pages ?? 1
 
-            return MovieSearch(currentSearchTerm: threadsafe.searchTerm, results: threadsafe.accumulatedResults, search: actions.search, loadMore: threadsafe.currentPage < threadsafe.totalPages ? actions.loadMore : nil)
+            return MovieSearch(currentSearchTerm: searchTerm, results: accumulatedResults, search: searchAction, loadMore: currentPage < totalPages ? loadMoreAction : nil)
         }
         // If we are loading additional results, don't set a ".fetching" state, only add new results once they are fetched
-        if case .fetching = response, !threadsafe.accumulatedResults.isEmpty {
+        if case .fetching = response, !accumulatedResults.isEmpty {
             return
         }
         model = movieSearch
@@ -145,26 +141,26 @@ final class MovieSearchSource: CustomSource {
         // If the search term is an empty string, just consider it nil
         let term = term?.isEmpty == true ? nil : term
         // If the term is our existing search term, then return without doing a new search
-        if term == threadsafe.searchTerm { return }
-        threadsafe.searchTerm = term
+        if term == searchTerm { return }
+        searchTerm = term
         // If we changed out search term, then we need to clear our existing results
-        threadsafe.accumulatedResults = []
+        accumulatedResults = []
         guard let term = term else {
             // If our term is nil, then just show empty results
-            model = .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: actions.search, loadMore: actions.loadMore), refresh: .doNothing))
+            model = .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: searchAction, loadMore: loadMoreAction), refresh: .doNothing))
             return
         }
         // Fetch the search response from the API
-        threadsafe.fetchableSource = dependencies.movieSearchResponse(for: term, page: nil)
-        threadsafe.fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
+        fetchableSource = dependencies.movieSearchResponse(for: term, page: nil)
+        fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
     }
 
     private func loadMore() {
-        guard let searchTerm = threadsafe.searchTerm, !searchTerm.isEmpty, threadsafe.currentPage < threadsafe.totalPages else {
+        guard let searchTerm = searchTerm, !searchTerm.isEmpty, currentPage < totalPages else {
             return
         }
         // Make a request for the next page of results for the current search term
-        threadsafe.fetchableSource = dependencies.movieSearchResponse(for: searchTerm, page: threadsafe.currentPage + 1)
-        threadsafe.fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
+        fetchableSource = dependencies.movieSearchResponse(for: searchTerm, page: currentPage + 1)
+        fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
     }
 }

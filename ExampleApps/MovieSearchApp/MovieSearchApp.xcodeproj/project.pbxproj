@@ -7,10 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CE03E82A282B051F00149069 /* Dependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE03E829282B051F00149069 /* Dependencies.swift */; };
-		CEBAA5C22846AEF900F6FE2E /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA5C12846AEF900F6FE2E /* Extensions.swift */; };
+		CE03E82A282B051F00149069 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE03E829282B051F00149069 /* AppDependencies.swift */; };
+		CEA90BA028AD630400C413EC /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA90B9F28AD630400C413EC /* Extensions.swift */; };
 		CEBAA5EE284719F600F6FE2E /* SourceArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = CEBAA5ED284719F600F6FE2E /* SourceArchitecture */; };
 		CEBCC57128246CC000D47A5F /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBCC57028246CC000D47A5F /* API.swift */; };
+		CEC2129928AB57E7003F02EB /* MovieSearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEC2129828AB57E7003F02EB /* MovieSearchViewController.swift */; };
+		CEC2129B28AC32B4003F02EB /* MovieDetailsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEC2129A28AC32B3003F02EB /* MovieDetailsViewController.swift */; };
 		D67F582F275839A3001CF295 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67F582E275839A3001CF295 /* AppDelegate.swift */; };
 		D67F5831275839A3001CF295 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67F5830275839A3001CF295 /* SceneDelegate.swift */; };
 		D67F5836275839A3001CF295 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D67F5834275839A3001CF295 /* Main.storyboard */; };
@@ -25,10 +27,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		CE03E829282B051F00149069 /* Dependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dependencies.swift; sourceTree = "<group>"; };
-		CEBAA5C12846AEF900F6FE2E /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		CE03E829282B051F00149069 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		CEA90B9F28AD630400C413EC /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		CEBAA5EC284719E600F6FE2E /* SourceArchitecture */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SourceArchitecture; path = ../..; sourceTree = "<group>"; };
 		CEBCC57028246CC000D47A5F /* API.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
+		CEC2129828AB57E7003F02EB /* MovieSearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieSearchViewController.swift; sourceTree = "<group>"; };
+		CEC2129A28AC32B3003F02EB /* MovieDetailsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieDetailsViewController.swift; sourceTree = "<group>"; };
 		D67F582B275839A3001CF295 /* MovieSearchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MovieSearchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D67F582E275839A3001CF295 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D67F5830275839A3001CF295 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -57,6 +61,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		CEC2129728AB57CF003F02EB /* UIKit */ = {
+			isa = PBXGroup;
+			children = (
+				CEC2129828AB57E7003F02EB /* MovieSearchViewController.swift */,
+				CEC2129A28AC32B3003F02EB /* MovieDetailsViewController.swift */,
+			);
+			path = UIKit;
+			sourceTree = "<group>";
+		};
+		CEC2129C28AC32F0003F02EB /* SwiftUI */ = {
+			isa = PBXGroup;
+			children = (
+				D67F589327594906001CF295 /* MainView.swift */,
+				D67F588F2758801A001CF295 /* MovieSearchView.swift */,
+				D67F58912759354D001CF295 /* MovieDetailsView.swift */,
+			);
+			path = SwiftUI;
+			sourceTree = "<group>";
+		};
 		D67F5822275839A3001CF295 = {
 			isa = PBXGroup;
 			children = (
@@ -79,8 +102,8 @@
 			isa = PBXGroup;
 			children = (
 				CEBCC57028246CC000D47A5F /* API.swift */,
-				CE03E829282B051F00149069 /* Dependencies.swift */,
-				CEBAA5C12846AEF900F6FE2E /* Extensions.swift */,
+				CE03E829282B051F00149069 /* AppDependencies.swift */,
+				CEA90B9F28AD630400C413EC /* Extensions.swift */,
 				D67F588E27587FFB001CF295 /* Views */,
 				D67F588227583A04001CF295 /* Sources */,
 				D67F582E275839A3001CF295 /* AppDelegate.swift */,
@@ -122,9 +145,8 @@
 		D67F588E27587FFB001CF295 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				D67F589327594906001CF295 /* MainView.swift */,
-				D67F588F2758801A001CF295 /* MovieSearchView.swift */,
-				D67F58912759354D001CF295 /* MovieDetailsView.swift */,
+				CEC2129728AB57CF003F02EB /* UIKit */,
+				CEC2129C28AC32F0003F02EB /* SwiftUI */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,13 +229,15 @@
 				D67F588427583A2C001CF295 /* MovieSearchSource.swift in Sources */,
 				D67F582F275839A3001CF295 /* AppDelegate.swift in Sources */,
 				D67F588827583A62001CF295 /* SelectedMovieSource.swift in Sources */,
+				CEC2129B28AC32B4003F02EB /* MovieDetailsViewController.swift in Sources */,
 				D67F588627583A3D001CF295 /* MovieDetailsSource.swift in Sources */,
 				D67F58922759354D001CF295 /* MovieDetailsView.swift in Sources */,
 				D67F589427594906001CF295 /* MainView.swift in Sources */,
+				CEA90BA028AD630400C413EC /* Extensions.swift in Sources */,
 				CEBCC57128246CC000D47A5F /* API.swift in Sources */,
-				CE03E82A282B051F00149069 /* Dependencies.swift in Sources */,
-				CEBAA5C22846AEF900F6FE2E /* Extensions.swift in Sources */,
+				CE03E82A282B051F00149069 /* AppDependencies.swift in Sources */,
 				D67F5831275839A3001CF295 /* SceneDelegate.swift in Sources */,
+				CEC2129928AB57E7003F02EB /* MovieSearchViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -24,54 +24,72 @@
 //  SOFTWARE.
 //
 
-import SourceArchitecture
 import Foundation
-import Combine
-import OrderedCollections
+import SourceArchitecture
 
 
 /// The Model which represents the current state and available API for a ToDoList
-public struct ToDoList {
-    public var items: [ModelState<ToDoItem>]
-    public var add: Action<Void>
+public struct ToDoList: Codable, Versioned {
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case items
+        case version
+        case add
+    }
+
+    private let id: String
+    public let items: [Source<ToDoItemView.Model>]
+    public let version: Date
+    public let add: Action<Void>
+    fileprivate let mutableItemSources: [Source<Mutable<ToDoItem>>]
+
+    fileprivate init(items: [Source<ToDoItemView.Model>] = [], mutableItemSources: [Source<Mutable<ToDoItem>>] = [], add: Action<Void>, version: Date = .now) {
+        self.id = "1"
+        self.items = items
+        self.version = .now
+        self.add = add
+        self.mutableItemSources = mutableItemSources
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.version = try container.decode(Date.self, forKey: .version)
+        self.add = try container.decode(Action<Void>.self, forKey: .add)
+        let decodedItems = try container.decode([ToDoItem].self, forKey: .items)
+        self.mutableItemSources = decodedItems.map { MutableSource($0).eraseToSource() }
+        self.items = mutableItemSources.map { ToDoItemViewSource($0).eraseToSource() }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(mutableItemSources.map { $0.model.value }, forKey: .items)
+        try container.encode(add, forKey: .add)
+        try container.encode(version, forKey: .version)
+    }
 }
 
-/// A data-only Codable struct used to write a ToDoList to persistence (e.g. a File). In order to work with NetworkSyncedPersistedSource it also must conform to the `Versioned` protocol so the most recent version (local persistence or network) can be used.
-public struct CodableToDoList: Codable, Versioned {
-    public var id = "1"
-    public var items: [CodableToDoItem]
-    public var version: Date
+public struct ToDoItem: Codable, Equatable, Identifiable {
+    public var id: String
+    public var description: String
+    public var dateCompleted: Date?
+    public var isDeleted: Bool
 }
 
 public protocol PersistableToDoListDependency {
-    var persistedToDoList: Source<Persistable<CodableToDoList>> { get }
+    var persistedToDoList: Source<Persistable<ToDoList>> { get }
 }
 
-public final class ToDoListSource: CustomSource {
+public final class ToDoListSource: SourceOf<ToDoList> {
+
     public typealias Dependencies = PersistableToDoListDependency
 
-    /// Actions this Source can provide, and which methods they map to
-    public class Actions: ActionMethods {
-        var add = ActionMethod(ToDoListSource.add)
-    }
-    /// Properties used by this source which may be read / written from multiple threads
-    public class Threadsafe: ThreadsafeProperties {
-        var mutableToDoItemSources = [HashableMutableToDoItemSource]()
-        var toDoItemSources = [Source<ToDoItem>]()
-    }
+    @Action(ToDoListSource.add) private var addAction
 
-    struct HashableMutableToDoItemSource: Hashable {
-        static func == (lhs: HashableMutableToDoItemSource, rhs: HashableMutableToDoItemSource) -> Bool {
-            lhs.source.model.value.id == rhs.source.model.value.id
-        }
-        let source: Source<Mutable<CodableToDoItem>>
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(source.model.value.id)
-        }
-    }
-
-    public lazy var defaultModel = ToDoList(items: [], add: actions.add)
-    private var persistedList: Source<Persistable<CodableToDoList>>
+    public lazy var initialModel = ToDoList(add: addAction)
+    private var persistedList: Source<Persistable<ToDoList>>
 
     public init(dependencies: Dependencies) {
         self.persistedList = dependencies.persistedToDoList
@@ -80,50 +98,45 @@ public final class ToDoListSource: CustomSource {
     }
 
     /// Whenever a change to our persisted List is detected, deserialize all the saved items and update our Model to reflect the current state of the List and all ToDoItems. Note that in this sample app, the persisted List can be changed either locally or by newer versions being retrieved from the Network.
-    private func update(new: Persistable<CodableToDoList>) {
+    private func update(new: Persistable<ToDoList>) {
         switch new {
         case .notFound:
-            model = .init(items: [], add: actions.add)
+            model = .init(add: addAction)
         case .found(let found):
-            // Unsubscribe from the Sources while we are making updates so we don't trigger an update loop
-            threadsafe.toDoItemSources.forEach { $0.unsubscribe(self) }
-            // Create Sources for all ToDoItems found in persistence
-            let persistedItems = OrderedSet(found.value.items.map {
-                HashableMutableToDoItemSource(source: MutableSource($0).eraseToSource().filteringDuplicates())
-            })
-            // Remove any deleted items and add any new items found in persistence to our mutable sources
-            threadsafe.mutableToDoItemSources = Array(OrderedSet( threadsafe.mutableToDoItemSources)
-                .intersection(persistedItems)
-                .union(persistedItems)
-                .enumerated().map {
-                    $0.element.source.model.set(persistedItems[$0.offset].source.model.value)
-                    return $0.element
-                })
-            // Make sure there is a final mapped ToDoItemSource for each mutable source we created above
-            threadsafe.toDoItemSources = threadsafe.mutableToDoItemSources.map { item in
-                // If a ToDoItem source already exists for an ID, use the existing one, otherwise create a new one and subscribe to any changes that get made to it
-                return threadsafe.toDoItemSources.first { $0.model.id == item.source.model.id } ?? ToDoItemSource(item.source.map{ $0.value }).eraseToSource()
+            var updatedSources = model.mutableItemSources.filter{ existing in
+                found.items.contains{  $0.id == existing.id }
             }
-            // Update our models items with any new ToDoItem sources that were created and resubscribe to changes
-            model.items = threadsafe.toDoItemSources.map {
-                $0.subscribe(self, method: ToDoListSource.itemUpdated, immediately: false)
-                return $0.$model
+            var updatedRenderables = model.items.filter { existing in
+                found.items.contains { $0.id == existing.id }
             }
+            updatedSources.forEach { $0.unsubscribe(self) }
+            found.mutableItemSources.forEach { new in
+                if let existing = updatedSources.first(where: { $0.id == new.id }) {
+                    existing.model.set(new.model.value)
+                } else {
+                    updatedSources += [new]
+                    updatedRenderables += [found.items.first{ $0.id == new.id }!]
+                }
+            }
+            updatedSources.forEach { $0.subscribe(self, method: ToDoListSource.itemUpdated, sendInitialModel: false) }
+            model = .init(items: updatedRenderables, mutableItemSources: updatedSources, add: model.add)
         }
     }
 
     /// When a ToDoItem is updated (e.g. the user marks it as completed or updated the description), serialize our ToDoList with all ToDoItems to persistence to save it (and update the version to the current timestamp)
-    private func itemUpdated(item: ToDoItem) {
-        let currentItems = model.items.filter { !$0.model.isDeleted }
-        // Map all the current ToDoItems to an array of serialized SavedToDoItems that will be written to persistence
-        let items = currentItems.map { CodableToDoItem(id: $0.model.id, description: $0.model.description, dateCompleted: $0.model.dateCompleted) }
-        persistedList.model.set(.init(items: items, version: .now))
+    private func itemUpdated(_ item: Mutable<ToDoItem>) {
+        let items = model.items.filter { item in
+            model.mutableItemSources.first { $0.id == item.id }?.model.isDeleted == false
+        }
+        let save = ToDoList(items: items, mutableItemSources: model.mutableItemSources.filter { !$0.model.isDeleted }, add: model.add, version: .now)
+        persistedList.model.set(save)
     }
 
     /// When a new ToDoItem should be added, create an empty new SavedToDoItem and write it to our persistence
     private func add() {
         // Create a new SavedToDoList consisting of any existing items plus a new SavedToDoItem
-        let updatedList = CodableToDoList(items: (persistedList.model.found?.value.items ?? []) + [.init(id: UUID().uuidString, description: "", dateCompleted: nil)], version: .now)
+        let newSource = MutableSource(ToDoItem(id: UUID().uuidString, description: "", dateCompleted: nil, isDeleted: false)).eraseToSource()
+        let updatedList = ToDoList(items: model.items + [ToDoItemViewSource(newSource).eraseToSource()], mutableItemSources: model.mutableItemSources + [newSource], add: model.add, version: .now)
         // Persist the new list
         persistedList.model.set(updatedList)
     }

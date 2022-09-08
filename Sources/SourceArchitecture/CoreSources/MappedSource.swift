@@ -1,6 +1,5 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  MappedSource.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +23,34 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import SwiftUI
-import ToDoList
+import Foundation
+import Combine
 
 
-class MainHostingController: UIHostingController<ToDoListView> {
+private final class MappedSource<Model, NewModel>: SourceOf<NewModel> {
 
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    @Source var input: Model
+
+    let transform: (Model) -> NewModel
+
+    lazy var initialModel = {
+        _input.subscribe(self, method: MappedSource.update, sendInitialModel: false)
+        return transform(input)
+    }()
+
+    init(_ input: Source<Model>, transform: @escaping (Model) -> NewModel) {
+        _input = input
+        self.transform = transform
     }
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    func update(_ input: Model) {
+        model = transform(input)
+    }
+}
+
+public extension Source {
+    /// Returns a new Source whose Model is the result of transforming the original Source's Model. Every time the original Source's model is updated, the new Source's model will also update.
+    func map<NewModel>(_ transform: @escaping (Model) -> NewModel) -> Source<NewModel> {
+        MappedSource(self, transform: transform).eraseToSource()
     }
 }

@@ -29,24 +29,11 @@ import SourceArchitecture
 
 // MARK: - Model -
 
-/// A Domain model for tracking the current selected movie and setting a new selection
-struct SelectedMovie: Equatable {
-    let selectedID: Int?
-    let setSelection: Action<Int?>
-}
-
-/// A Source that keeps track of the current selected movie ID, allows a new selected ID to be set, and informs all subscribers of changes whenever the selected ID changes.  Because different other Source compose an instance of this Source and create their own copy of SelectedMoveSource to get or set the selected ID, we subclass SyncedSource.  This ensures that every instance of SelectedMovieSource created anywhere in the app will always have the same value and update when any other instance updates.
-final class SelectedMovieSource: CustomSource {
-    class Actions: ActionMethods {
-        var setSelection = ActionMethod(SelectedMovieSource.setSelection)
-    }
-    lazy var defaultModel = SelectedMovie(selectedID: nil, setSelection: actions.setSelection)
-
-    private func setSelection(_ id: Int?) {
-        model = .init(selectedID: id, setSelection: actions.setSelection)
-    }
+/// A Source that keeps track of the current selected movie ID, allows a new selected ID to be set, and informs all subscribers of changes whenever the selected ID changes.
+final class SelectedMovieSource: ComposedSource<Mutable<Int?>> {
+    init() { super.init { MutableSource(nil).eraseToSource() } }
 }
 
 protocol SelectedMovieDependency {
-    var selectedMovie: Source<SelectedMovie> { get }
+    var selectedMovie: Source<Mutable<Int?>> { get }
 }

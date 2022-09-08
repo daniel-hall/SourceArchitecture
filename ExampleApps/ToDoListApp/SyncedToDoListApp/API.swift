@@ -31,7 +31,8 @@ import ToDoList
 
 /// Define the API endpoints for getting and updates the synced ToDoList
 struct API {
-    static func getToDoList() -> Source<Fetchable<CodableToDoList?>> {
+    
+    static func getToDoList() -> Source<Fetchable<ToDoList?>> {
         var urlRequest = URLRequest(url: .init(string: "https://62843b0f3060bbd3473602a8.mockapi.io/ToDoList/1")!)
         urlRequest.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         urlRequest.timeoutInterval = 5
@@ -42,7 +43,7 @@ struct API {
             .retrying(.everyIntervalWithMaximum(.init(retryInterval: 5, maximumRetries: 30)), forwardErrorAfter: .never)
     }
 
-    static func updateToDoList(_ list: CodableToDoList) -> Source<Fetchable<CodableToDoList>> {
+    static func updateToDoList(_ list: ToDoList) -> Source<Fetchable<ToDoList>> {
         var urlRequest = URLRequest(url: .init(string: "https://62843b0f3060bbd3473602a8.mockapi.io/ToDoList/1")!)
         urlRequest.httpMethod = "PUT"
         urlRequest.timeoutInterval = 5
@@ -51,7 +52,7 @@ struct API {
         urlRequest.httpBody = try! JSONEncoder().encode(list)
         return FetchableDataSource(urlRequest: urlRequest)
             .eraseToSource()
-            .afterDelay(of: 1)
+            .fetchAfterDelay(of: 1)
             .mapFetchedValue { _ in list }
             .retrying(.everyIntervalWithMaximum(.init(retryInterval: 5, maximumRetries: 30)), forwardErrorAfter: .never)
     }

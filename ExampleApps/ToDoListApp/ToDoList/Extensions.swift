@@ -1,6 +1,6 @@
 //
-//  MainHostingController.swift
-//  LocalToDoListApp
+//  Extensions.swift
+//  ToDoList
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -24,18 +24,23 @@
 //  SOFTWARE.
 //
 
-import UIKit
 import SwiftUI
-import ToDoList
 
-
-class MainHostingController: UIHostingController<ToDoListView> {
-
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+public extension Binding {
+    init<T: AnyObject>(source: T, keyPath: ReferenceWritableKeyPath<T, Value>) {
+        self.init(get: { [unowned source] in source[keyPath: keyPath] }, set: { [weak source] in source?[keyPath: keyPath] = $0 })
     }
 
-    init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+    func onChange(_ closure: @escaping (Value) -> Void) -> Self {
+        .init(get: { self.wrappedValue },
+              set: { self.wrappedValue = $0
+                  closure($0)
+              })
+    }
+}
+
+extension Binding: Equatable where Value: Equatable {
+    public static func ==(lhs: Self, rhs: Self) -> Bool {
+        lhs.wrappedValue == rhs.wrappedValue
     }
 }
