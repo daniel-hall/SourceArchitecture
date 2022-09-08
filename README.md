@@ -67,11 +67,11 @@ An incredibly streamlined framework for building reactive, highly-testable and s
   ```swift
   let loginAction = Action<Credentials> { loginExpectation.fulfill() }
   let logOutAction = Action<Void> { XCTFail("logOut should not have been called") }
-  let mockAuthenticationModel = AuthenticationModel(isAuthenticated: false,
-  																									authToken: nil,
-  																									authError: nil,
-  																									logInWithCredentials: loginAction,
-  																									logOut: logOutAction)
+  let mockAuthenticationModel = AuthenticationModel(isAuthenticated: false, 
+                                                    authToken: nil,
+                                                    authError: nil,
+                                                    logInWithCredentials: loginAction,
+                                                    logOut: logOutAction)
   testSubject = .init(authModel: mockAuthenticationModel)
   ```
 
