@@ -23,6 +23,9 @@
                location = "group:CombinedSource.swift">
             </FileRef>
             <FileRef
+               location = "group:CombinePublisherSource.swift">
+            </FileRef>
+            <FileRef
                location = "group:ConnectableSource.swift">
             </FileRef>
             <FileRef

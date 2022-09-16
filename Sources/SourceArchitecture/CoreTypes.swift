@@ -116,6 +116,14 @@ public struct Source<Model>: DynamicProperty {
     }
 }
 
+/// Combine interoperability
+public extension Source {
+    func eraseToAnyPublisher() -> AnyPublisher<Model, Never> {
+        defer { source.publisher.send(source.model) }
+        return source.publisher.eraseToAnyPublisher()
+    }
+}
+
 public extension _Source {
     /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@Action(MyCustomSource.doSomething) var doSomethingAction`
     @propertyWrapper
