@@ -106,8 +106,8 @@ final class QuoteViewSource: SourceOf<QuoteView.Model> {
   @Action(QuoteViewSource.getRandomQuote) private var getRandomQuoteAction
   
   lazy var initialModel = QuoteView.Model(quote: "", author: "", getRandomQuote: getRandomQuoteAction)
-
-	override init() {
+  
+  override init() {
     super.init()
     getRandomQuote() // Kick off the fetch of the first quote
   }
@@ -132,7 +132,7 @@ private struct QuoteResponse: Decodable {
 ```
 
 
-That's it! We can now instantiate this real Source in our preview and see the screen render random quotes from the endpoint! The button works to get a new random quote as well. It's worth noting that you are free to use Combine publishers, async / await, Actors, or another other paradigm when working with Source Architecture. The only requirement a Source has ultimately is that it needs to 1) define an initial value for its model and 2) set its `model` property with new values when they should change.
+That's it! We can now instantiate this real Source in our preview and see the screen render random quotes from the endpoint! The button works to get a new random quote as well. It's worth noting that you are free to use Combine publishers, async / await, Actors, or any other paradigm when working with Source Architecture. The only requirement a Source has ultimately is that it needs to 1) define an initial value for its model and 2) set its `model` property with new values when they should change.
 
 ![QuoteViewWithLiveSource](./Docs/QuoteViewWithLiveSource.png)
 
@@ -296,7 +296,7 @@ So in about fifty lines of code we created a small app that displays a screen wi
 
   ```swift
   // We always erase the concrete type and just reference a Source of the Model
-  let authSource: Source<AuthenticationModel> = AuthManager().eraseToSource
+  let authSource: Source<AuthenticationModel> = AuthManager().eraseToSource()
   
   // Get the the current value of the AuthenticationModel
   let currentModel = authSource.model
@@ -456,23 +456,38 @@ So in about fifty lines of code we created a small app that displays a screen wi
                                    .loggingErrors() // Will automatically log errors as implemented above
   ```
 
-  
-
-- #### Composable business logic
-
-- #### Extremely easy to test
-
-  
-
 
 
 ## Frequently Asked Questions:
 
+#### Why does Source Architecture use a custom type of publisher (`Source<Model>`) instead of just using the existing Combine `AnyPublisher<Model, Never>`?
+
+There are a few good reason for this. First, in Source Architecture, a screen *must always have some current value it can render*. `AnyPublisher` doesn’t guarantee that there will already be a value when you subscribe to it. We could have used `CurrentValueSubject<Model, Never>`, but then any code or call site could set a new value for the Model. In Source Architecture, only the Source itself can ever change the value of the Model, which gives strong guarantees around immutability, safety and decoupling.
+
+Second, in Combine, `AnyPublisher<Model, Never>` can have different behaviors for subscribers, depending on the underlying Publishers involved. Sometimes, subscribing to the AnyPublisher will give you the same values as any copies of that AnyPublisher (so two Views that get passed an AnyPublisher would render the same values). This is sometimes referred to as a “hot” publisher. But other times, each new subscriber gets a new value or sequence of values. So two Views that get passed an AnyPublisher could potentially render different values. This is sometimes referred to as a “cold” publisher and violates a core principle of Source Architecture, which is that every value comes from a single Source of truth, and all subscribers to a Source must receive the same value at the same time. This is very important for data consistency in the app if you think about it!
+
+Lastly, all Sources can always be updated and never complete. And AnyPublisher allows for publishers that do terminate, which also violates the principle of always having a current value. So in reactive terms, Sources are shared, hot publishers which always contain a current value and never terminate. Since there isn’t an existing type in Combine which guarantees these things (without exposing API to mutate the value from anywhere), Source Architecture has implemented its own `Source<Model>` type to meet these needs.
+
+Please note that Sources still interoperate easily with Combine publishers: you can always use one or more Combine publishers inside a Source to update its model. And similarly, you can always automatically transform a `Source<Model>` into an `AnyPublisher<Model, Never>` or transform a Publisher into a Source.
 
 
-## Next Steps:
+#### Why do Sources get subscribed to by passing in a reference to a subscriber, and the method that should be called on that subscriber, instead of just passing in a closure that gets executed, like Combine’s sink method?
+
+Over years of using various forms of Source Architecture in real apps, one thing that teams discovered is that closures that can accidentally capture views / view controllers / other objects (including self) are a major cause of memory leaks. And it’s often difficult to track those leaks down or know they are happening. The `subscribe(_:method:)` approach ensures that no leaks can occur.
+
+Additionally, it was also noticed over time that debugging closures in lldb fails frequently and is more difficult to follow than debugging actual methods. The Source Architecture approach also encourages moving code into easy to follow and debug methods, rather than spreading it around in anonymous closures.
 
 
+#### Can I just use a closure in Models instead of an Action? For example, instead of `let submit: Action<String>`, can I just declare `let submit: (String) → Void`?
+
+There is nothing stopping you from using closures instead of Actions, but there are several very good reasons to use Actions instead:
+
+- Closures capture state and can therefore execute based on old, out-of-date values and Model state. This leads to the need for defensive coding and can result in tricky bugs. Actions always call a method on the Source which will operate on current (not captured) state, and will not execute if the Model is not in the correct state for that particular Action. This eliminates the need for a lot of extra defensive coding and test cases.
+
+- Closures can easily lead to memory leaks, but similar to the subscription approach described in the previous question above, Actions never leak memory and are incapable of accidentally capturing self or other objects.
+
+- Closures cannot be tested for equality and cannot be identified at runtime or in debugging (e.g. “which closure is this?”). If you want your Model to be Equatable and it has closure properties, you have to manually assume to closures with the same signature are equal, but this is often untrue and can lead to unsolvable bugs. Actions are already Equatable and automatically contain a unique description per Action which indicates exactly which method on which Source that Action will execute. So when two Actions are equal, it’s true equality because they are guaranteed to call exactly the same method on the same Source. Actions are also Codable / Decodable, so if you want to save your Model to disk, that is impossible with closure properties (which cannot be encoded / decoded), but fully supported by Actions.
+- Actions can be used to record all the exact steps a user performs for debugging or logging purposes automatically (subscribe to the `ActionExecution.publisher` stream) , whereas you would have to separately implement similar behavior manually in every single closure you create (and you might forget to). 
 
 
 
