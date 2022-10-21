@@ -187,7 +187,7 @@ So in about fifty lines of code we created a small app that displays a screen wi
 
   
 
-  In contrast, Source Architecture defines all API in the Model types themselves. Models are structs or enums which contain both data and Actions. In contrast to the above protocol based appraoch, Source Architecture would expose the API like this:
+  In contrast, Source Architecture defines all API in the Model types themselves. Models are structs or enums which contain both data and Actions. In contrast to the above protocol based approach, Source Architecture would expose the API like this:
 
   ```swift
   struct AuthenticationModel {
@@ -200,7 +200,7 @@ So in about fifty lines of code we created a small app that displays a screen wi
   ```
 
   
-  Now, anything, regardless of protocol conformance can provide an instance or stream of these Models populated with the appropriate data and Actions. For example, in a test scenario instead of implementating a `MockAuthenticationManager` and conforming it to the AuthenticationProvider protocol, we can simply do this:
+  Now, anything, regardless of protocol conformance can provide an instance or stream of these Models populated with the appropriate data and Actions. For example, in a test scenario instead of implementing a `MockAuthenticationManager` and conforming it to the AuthenticationProvider protocol, we can simply do this:
   
   ```swift
   let loginAction = Action<Credentials> { loginExpectation.fulfill() }
@@ -215,7 +215,7 @@ So in about fifty lines of code we created a small app that displays a screen wi
   
   No need for the overhead of creating protocols and conforming types, etc. Instead you can write less code and simpler code.
   
-  Beyond saving extraneous code, the Model-defined approach allows for much better APIs which are self-documenting and require fewer tests. And many of these APIs are simply not possible with the protocol-defined approach. For example, in our AuthenticationProvider protocol above, there are implict rules that aren't clear to client developers. 
+  Beyond saving extraneous code, the Model-defined approach allows for much better APIs which are self-documenting and require fewer tests. And many of these APIs are simply not possible with the protocol-defined approach. For example, in our AuthenticationProvider protocol above, there are implicit rules that aren't clear to client developers. 
   
   - The `logOut()` method should only be called if `isAuthenticated == true`, otherwise it doesn't make sense
   - The `logInWithCredential()` method should only be called if `isAuthenticated == false`
@@ -264,14 +264,14 @@ So in about fifty lines of code we created a small app that displays a screen wi
 
   In Source Architecture, the basic unit of logic is a Source. A Source is the single source of truth for a piece of information and controls all modifications and transactions (saving, fetching, etc.) related to that information. As we saw above, our Models can have multiple states, with different Actions available in each state which are capable of transitioning the Model to a new state (like from `.notAuthenticated` to `.authenticated`)
 
-  Source Architecture simplifies this greatly and saves a lot of boilerplace code involved in setting up such state machines. In order to implement a Source that manages the `AuthenticationModel` state we described above, it's as simple as:
+  Source Architecture simplifies this greatly and saves a lot of boilerplate code involved in setting up such state machines. In order to implement a Source that manages the `AuthenticationModel` state we described above, it's as simple as:
 
   ```swift
   final class AuthManager: SourceOf<AuthenticationModel> {
     @Action(AuthManager.logIn) var logInAction // Connect Action to private method
     @Action(AuthManager.logOut) var logOutAction // Connect Action to private method
   
-    // Specifiying an intial value for the model is the single CustomSource requirement
+    // Specifying an initial value for the model is the single CustomSource requirement
     lazy var initialModel: AuthenticationModel 
     		= .notAuthenticated(.init(error: nil, logInWithCredentials: logInAction))
   
@@ -312,7 +312,7 @@ So in about fifty lines of code we created a small app that displays a screen wi
 
 - #### UIKit works just like SwiftUI and is powered by the exact same Sources of data
 
-  In Source Architecture, anything which should present updating data to the user (whether a UIViewController, a SwiftUI View, a UITableViewCell, etc.) simply conforms to the `Renderer` protocol. This protocol only requires that the view have an @Source property named "model" with the type of the Model the view wants to display (analagous to "view model" or "view state"). For SwiftUI Views, that's the only requirement, for non-SwiftUI views there must also be a method named `render()` which will be called automatically when the model is updated.
+  In Source Architecture, anything which should present updating data to the user (whether a UIViewController, a SwiftUI View, a UITableViewCell, etc.) simply conforms to the `Renderer` protocol. This protocol only requires that the view have an @Source property named "model" with the type of the Model the view wants to display (analogous to "view model" or "view state"). For SwiftUI Views, that's the only requirement, for non-SwiftUI views there must also be a method named `render()` which will be called automatically when the model is updated.
 
   Here is a simplified SwiftUI View which shows the status of a coworker, using Source Architecture:
 
@@ -386,7 +386,7 @@ So in about fifty lines of code we created a small app that displays a screen wi
   Source Architecture includes a set of powerful and flexible generic Models:
 
   - `Fetchable<Value>`: a model that describes a value that is retrieved over a network. The model has three possible states of a value — `.fetching`, `.fetched` and `.failure`. Failures can optionally include a retry Action, along with an error and count of failed attempts. The fetched state also includes a refresh Action to get the latest value.
-  - `Persistable<Value>`: a model that describes any kind of persisted value, whether it be using cache, file, keychain, user defaults, database, or other persistence mechanisms. The Persistable model has two state: `.found` and `.notFound`. Either state allows a new value to be saved via the set Action, and the found state also includes an Action to clear the persisted value and a property to detemine if the found value is stale or expired.
+  - `Persistable<Value>`: a model that describes any kind of persisted value, whether it be using cache, file, keychain, user defaults, database, or other persistence mechanisms. The Persistable model has two state: `.found` and `.notFound`. Either state allows a new value to be saved via the set Action, and the found state also includes an Action to clear the persisted value and a property to determine if the found value is stale or expired.
   - `CurrentAndPrevious<Value>`: a model that includes both a current instance of the Value, as well as an optional previous instance.
   - `Connectable<Value>`: a model that described two possible states of a value — `.connected` and `.disconnected`. This allows any resources needed to manage the value to be deferred and not created until connection and for any underlying resources to be released when the value is disconnected.
 
