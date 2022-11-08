@@ -27,5 +27,5 @@ import Foundation
 
 public protocol DataConvertible {
     func encode() throws -> Data
-    static func decode(from: Data) throws -> Self
+    static func decode(from data: Data) throws -> Self
 }
