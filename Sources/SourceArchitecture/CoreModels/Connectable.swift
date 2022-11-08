@@ -75,11 +75,11 @@ public enum Connectable<Value> {
         connected != nil
     }
     
-    public func connect(ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    public func connect(ifUnavailable: ((Swift.Error) -> Bool)? = nil) {
         disconnected?.connect(ifUnavailable: ifUnavailable)
     }
     
-    public func disconnect(ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    public func disconnect(ifUnavailable: ((Swift.Error) -> Bool)? = nil) {
         connected?.disconnect(ifUnavailable: ifUnavailable)
     }
 }
