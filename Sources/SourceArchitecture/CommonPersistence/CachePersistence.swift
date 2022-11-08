@@ -100,10 +100,10 @@ public class CachePersistence<Options: CachePersistenceOptions> {
         dictionary = dictionary.filter { !$0.value.isReleased }
         return dictionary.sorted {
             guard let first = $0.1.source?.model, let second = $1.1.source?.model else { return true }
-            return (first.isExpired() && !second.isExpired() )
-            || (first.isExpired() && second.isExpired() )
-            || (first.retentionPolicy < second.retentionPolicy && !second.isExpired())
-            || (first.retentionPolicy == second.retentionPolicy && !second.isExpired() && first.dateLastSet < second.dateLastSet )
+            return (first.isExpired && !second.isExpired )
+            || (first.isExpired && second.isExpired )
+            || (first.retentionPolicy < second.retentionPolicy && !second.isExpired)
+            || (first.retentionPolicy == second.retentionPolicy && !second.isExpired && first.dateLastSet < second.dateLastSet )
         }
     }
 
@@ -310,7 +310,7 @@ private struct CachedItem {
     let retentionPolicy: CacheDescriptor.CacheRetentionPolicy
     let expireAfter: TimeInterval?
     let dateLastSet: Date
-    let isExpired: () -> Bool
+    let isExpired: Bool
     let set: Action<CachedItem>
     let clear: Action<Void>
 }
@@ -349,7 +349,7 @@ fileprivate final class CachePersistenceSource: SourceOf<CachedItem> {
     weak var memory: MemoryManageable?
 
     lazy var initialModel: CachedItem = { [unowned self] in
-        return CachedItem(value: nil, size: nil, retentionPolicy: .discardUnderMemoryPressure, expireAfter: nil, dateLastSet: Date(), isExpired: { true }, set: self.setAction, clear: self.clearAction)
+        return CachedItem(value: nil, size: nil, retentionPolicy: .discardUnderMemoryPressure, expireAfter: nil, dateLastSet: Date(), isExpired: true, set: self.setAction, clear: self.clearAction)
     }()
 
     init(memory: MemoryManageable, updateClosure: @escaping () -> Void) {
@@ -365,11 +365,11 @@ fileprivate final class CachePersistenceSource: SourceOf<CachedItem> {
             expireWorkItem?.cancel()
             expireWorkItem = .init { [weak self] in
                 guard let self = self else { return }
-                self.model = .init(value: self.model.value, size: self.model.size, retentionPolicy: self.model.retentionPolicy, expireAfter: self.model.expireAfter, dateLastSet: Date(), isExpired: { true }, set: self.model.set, clear: self.model.clear)
+                self.model = .init(value: self.model.value, size: self.model.size, retentionPolicy: self.model.retentionPolicy, expireAfter: self.model.expireAfter, dateLastSet: Date(), isExpired: true, set: self.model.set, clear: self.model.clear)
             }
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + expireAfter, execute: expireWorkItem!)
-            return { cachedDate.distance(to: Date()) < expireAfter }
-        } ?? { false }
+            return cachedDate.distance(to: Date()) < expireAfter
+        } ?? false
 
         model = .init(value: cachedItem.value, size: cachedItem.size, retentionPolicy: cachedItem.retentionPolicy, expireAfter: nil, dateLastSet: Date(), isExpired: isExpired, set: setAction, clear: clearAction)
     }

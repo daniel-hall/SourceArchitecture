@@ -1,6 +1,5 @@
 //
-//  AppDependencies.swift
-//  LocalToDoListApp
+//  DataConvertible.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -25,17 +24,8 @@
 //
 
 import Foundation
-import SourceArchitecture
-import ToDoList
 
-
-/// Pass in a FilePersistence Source for the dependency. Note that in a UI test scenario, a mock Persistable Source can be injected here instead
-struct AppDependencies: PersistableToDoListDependency {
-    private let filePersistence = FilePersistence()
-    var persistedToDoList: Source<Persistable<ToDoList>> {
-        let descriptor = FileDescriptor<ToDoList>(path: "ToDoList")
-        return filePersistence.persistableSource(for: descriptor)
-    }
+public protocol DataConvertible {
+    func encode() throws -> Data
+    static func decode(from: Data) throws -> Self
 }
-
-let appDependencies = AppDependencies()

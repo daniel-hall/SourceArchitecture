@@ -101,7 +101,7 @@ final class MovieDetailsSource: ComposedSource<Fetchable<MovieDetails>> {
             let combinedFetchedSource: Source<Fetchable<(MovieDetailsResponse, MovieCreditsResponse)>> = dependencies.selectedMovie.flatMap { [dependencies] in
                 // combinedFetch will managed the fetching, failure, and fetched state from two different Sources and merge them into a single fetching, failure or fetched state that is a tuple of the Values from the original sources
                 guard let id = $0.value else {
-                    return Source(wrappedValue: Fetchable<MovieDetailsResponse>.fetching(.init(progress: nil))).combinedFetch(with: .init(wrappedValue: Fetchable<MovieCreditsResponse>.fetching(.init(progress: nil))))
+                    return Source(model: Fetchable<MovieDetailsResponse>.fetching(.init(progress: nil))).combinedFetch(with: .init(model: Fetchable<MovieCreditsResponse>.fetching(.init(progress: nil))))
                 }
                 return dependencies.movieDetails(for: id).combinedFetch(with: dependencies.movieCredits(for: id))
             }
@@ -112,7 +112,7 @@ final class MovieDetailsSource: ComposedSource<Fetchable<MovieDetails>> {
                 // Create a Source for the fetched poster image. If there isn't a URL, return a failure with a placeholder image
                 let posterSource: Source<FetchableWithPlaceholder<UIImage, UIImage>> = posterURL.map { url in
                     dependencies.moviePoster(from: url).addingPlaceholder(UIImage(systemName: "photo")!)
-                } ?? .init(wrappedValue: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No poster URL"]), failedAttempts: 1, retry: nil)))
+                } ?? .init(model: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No poster URL"]), failedAttempts: 1, retry: nil)))
                 let formatter = NumberFormatter()
                 formatter.numberStyle = .currency
 

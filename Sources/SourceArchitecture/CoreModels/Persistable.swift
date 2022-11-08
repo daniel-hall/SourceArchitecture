@@ -55,13 +55,12 @@ public enum Persistable<Value> {
     public struct Found {
         public let set: Action<Value>
         public let clear: Action<Void>
-        public var isExpired: Bool { isExpiredClosure() }
+        public let isExpired: Bool
         public let value: Value
-        private let isExpiredClosure: () -> Bool
-        
-        public init(value: Value, isExpired: @escaping () -> Bool, set: Action<Value>, clear: Action<Void>) {
+
+        public init(value: Value, isExpired: Bool, set: Action<Value>, clear: Action<Void>) {
             self.value = value
-            self.isExpiredClosure = isExpired
+            self.isExpired = isExpired
             self.set = set
             self.clear = clear
         }

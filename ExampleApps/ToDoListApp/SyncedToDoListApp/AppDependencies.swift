@@ -34,16 +34,16 @@ struct AppDependencies: PersistableToDoListDependency {
     private let filePersistence = FilePersistence()
 
     var persistedToDoList: Source<Persistable<ToDoList>> {
-        let fileDescriptor = FilePersistence.Descriptor<ToDoList>(directory: .documentDirectory, path: "ToDoList")
-        return NetworkSyncedPersistableSource(persisted: filePersistence[fileDescriptor],
+        let fileDescriptor = FileDescriptor<ToDoList>(directory: .documentDirectory, path: "ToDoList")
+        return NetworkSyncedPersistableSource(persisted: filePersistence.persistableSource(for: fileDescriptor),
                                               // The network GET source for getting the network version of the value
                                               get: API.getToDoList,
                                               // We use a single shared list, no creating new ones on the network
-                                              create: { Source(wrappedValue: .fetched(.init(value: $0, refresh: .doNothing))) },
+                                              create: { Source(model: .fetched(.init(value: $0, refresh: .doNothing))) },
                                               // The network PUT source for writing local updates to remote
                                               update: { API.updateToDoList($0) },
                                               // We don't allow deleting the shared list
-                                              delete: { Source(wrappedValue: .fetched(.init(value: $0, refresh: .doNothing))) }
+                                              delete: { Source(model: .fetched(.init(value: $0, refresh: .doNothing))) }
         ).eraseToSource()
     }
 }

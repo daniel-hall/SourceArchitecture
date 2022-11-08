@@ -67,8 +67,8 @@ public struct Source<Model>: DynamicProperty {
         @available(*, unavailable) set {}
     }
 
-    public init(wrappedValue: Model) {
-        source = ObservableSource(wrappedValue)
+    public init(model: Model) {
+        source = ObservableSource(model)
     }
 
     fileprivate init<T: _SourceProtocol>(_ source: T) where T.Model == Model {
@@ -366,17 +366,13 @@ public struct Action<Input>: Codable {
         self.actionIdentifier = actionIdentifier
         self.sourceIdentifier = sourceIdentifier
         self.source = WeakReference()
-        self.execute = {
-            try testClosure($0)
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: $0))
-        }
+        self.execute = { try testClosure($0) }
     }
 
     /// Creates an Action which accepts a different type of input, but calls through to this original action. When the new Action is invoked with the new input, it will transform that input to the original input type and use that invoke the original Action.
     public func map<NewInput>(actionIdentifier: String = "\(#file).\(#line) MappedAction" , transform: @escaping (NewInput) -> Input) -> Action<NewInput> {
         .init(actionIdentifier: actionIdentifier, sourceIdentifier: self.description) {
             try self.execute(transform($0))
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: description, actionIdentifier: actionIdentifier, input: $0))
         }
     }
 }
@@ -385,18 +381,26 @@ public struct Action<Input>: Codable {
 // MARK: - Action Extensions -
 
 public extension Action {
-    func callAsFunction(_ input: Input, ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    // Executes the Action with the provided input. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
+    func callAsFunction(_ input: Input, ifUnavailable: ((Swift.Error) -> Bool)? = nil) {
         do {
             try execute(input)
+            ActionExecution._publisher.send(.init(sourceIdentifier: self.sourceIdentifier, actionIdentifier: self.actionIdentifier, input: input, error: nil))
         } catch {
-            ifUnavailable?(error)
-            ActionExecution._errors.send(error)
+            if let ifUnavailable = ifUnavailable {
+                if ifUnavailable(error) {
+                    ActionExecution._publisher.send(.init(sourceIdentifier: self.sourceIdentifier, actionIdentifier: self.actionIdentifier, input: input, error: error))
+                }
+            } else {
+                ActionExecution._publisher.send(.init(sourceIdentifier: self.sourceIdentifier, actionIdentifier: self.actionIdentifier, input: input, error: error))
+            }
         }
     }
 }
 
 public extension Action where Input == Void {
-    func callAsFunction(ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    // Executes the Action. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
+    func callAsFunction(ifUnavailable: ((Swift.Error) -> Bool)? = nil) {
         callAsFunction((), ifUnavailable: ifUnavailable)
     }
 }
@@ -441,7 +445,6 @@ fileprivate extension Action {
                 throw Action.Error.actionExpired(actionIdentifier)
             }
             method(source)(input)
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input))
         }
     }
 
@@ -455,7 +458,6 @@ fileprivate extension Action {
                 throw Action.Error.actionExpired(actionIdentifier)
             }
             method(source)()
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: ()))
         }
     }
 }
@@ -480,14 +482,15 @@ public struct ActionExecution {
     public static let publisher = _publisher.eraseToAnyPublisher()
     fileprivate static let _publisher = PassthroughSubject<ActionExecution, Never>()
 
-    public static var errors: AnyPublisher<Error, Never> {
+    public static var errors: AnyPublisher<ActionExecution, Never> {
         _defaultErrorSubscription?.cancel()
         _defaultErrorSubscription = nil
         return _errors.eraseToAnyPublisher()
     }
     fileprivate static let _errors = {
-        let publisher = PassthroughSubject<Error, Never>()
-        _defaultErrorSubscription = publisher.sink { error in
+        let publisher = ActionExecution.publisher.filter { $0.error != nil }
+        _defaultErrorSubscription = publisher.sink { execution in
+            guard let error = execution.error else { return }
             // assert ensures it only runs in non-release builds
             assert({
                 print(error)
@@ -503,6 +506,7 @@ public struct ActionExecution {
     public let actionIdentifier: String
     public var description: String { sourceIdentifier + "." + actionIdentifier }
     public let input: Any
+    public let error: Error?
 }
 
 

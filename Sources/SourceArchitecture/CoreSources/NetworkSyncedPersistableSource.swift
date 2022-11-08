@@ -132,7 +132,7 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
 
     func handlePersistenceUpdate(update: CurrentAndPrevious<Persistable<Value>>) {
         switch update.current {
-        case .found(let found): model = .found(.init(value: found.value, isExpired: { found.isExpired }, set: setAction, clear: clearAction))
+        case .found(let found): model = .found(.init(value: found.value, isExpired:  found.isExpired, set: setAction, clear: clearAction))
         case .notFound(let notFound):
             model = .notFound(.init(error: notFound.error, set: setAction))
             if let previous = update.previous?.found?.value {

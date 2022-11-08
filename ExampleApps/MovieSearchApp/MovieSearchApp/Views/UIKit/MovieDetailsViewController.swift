@@ -51,7 +51,7 @@ final class MovieDetailsViewController: UIViewController, Renderer {
 
     init?(source: Source<Fetchable<MovieDetails>>, coder: NSCoder) {
         _model = source
-        _fetchablePoster = .init(wrappedValue: nil)
+        _fetchablePoster = .init(model: nil)
         super.init(coder: coder)
     }
 

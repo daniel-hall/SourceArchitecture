@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		CEA90BA228AD63A200C413EC /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA90BA128AD63A200C413EC /* Extensions.swift */; };
-		CEBAA67128471F1D00F6FE2E /* ToDoList.h in Headers */ = {isa = PBXBuildFile; fileRef = CEBAA67028471F1D00F6FE2E /* ToDoList.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CEBAA67C28471F4500F6FE2E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA67B28471F4500F6FE2E /* AppDelegate.swift */; };
 		CEBAA67E28471F4500F6FE2E /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBAA67D28471F4500F6FE2E /* SceneDelegate.swift */; };
 		CEBAA68328471F4500F6FE2E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CEBAA68128471F4500F6FE2E /* Main.storyboard */; };
@@ -82,7 +81,6 @@
 /* Begin PBXFileReference section */
 		CEA90BA128AD63A200C413EC /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		CEBAA66E28471F1D00F6FE2E /* ToDoList.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ToDoList.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		CEBAA67028471F1D00F6FE2E /* ToDoList.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ToDoList.h; sourceTree = "<group>"; };
 		CEBAA67928471F4500F6FE2E /* LocalToDoListApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocalToDoListApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEBAA67B28471F4500F6FE2E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		CEBAA67D28471F4500F6FE2E /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -169,7 +167,6 @@
 				CEBAA6A628471FD400F6FE2E /* ToDoListSource.swift */,
 				CEBAA6A728471FD400F6FE2E /* ToDoListView.swift */,
 				CEC2125528AAE991003F02EB /* ToDoItemView.swift */,
-				CEBAA67028471F1D00F6FE2E /* ToDoList.h */,
 			);
 			path = ToDoList;
 			sourceTree = "<group>";
@@ -227,7 +224,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CEBAA67128471F1D00F6FE2E /* ToDoList.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
