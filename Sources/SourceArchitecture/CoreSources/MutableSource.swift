@@ -28,7 +28,7 @@ import Foundation
 
 private final class _MutableSource<Model>: SourceOf<Mutable<Model>> {
 
-    @Action(_MutableSource.set) var setAction
+    @Action(set) var setAction
 
     let initialValue: Model
     lazy var initialModel = Mutable(value: initialValue, set: setAction)

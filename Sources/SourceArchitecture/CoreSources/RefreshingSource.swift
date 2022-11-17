@@ -53,7 +53,7 @@ private final class RefreshingSource<Value>: SourceOf<Fetchable<Value>> {
     }
     
     func update() {
-        fetchableValue.fetched?.refresh()
+        fetchableValue.fetched?.refresh?()
         refreshWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in self?.update() }
         refreshWorkItem = workItem

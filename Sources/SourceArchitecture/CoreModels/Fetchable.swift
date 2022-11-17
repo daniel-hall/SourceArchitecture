@@ -55,9 +55,9 @@ public enum Fetchable<Value> {
 
     @dynamicMemberLookup
     public struct Fetched {
-        public let refresh: Action<Void>
+        public let refresh: Action<Void>?
         public var value: Value
-        public init(value: Value, refresh: Action<Void>) {
+        public init(value: Value, refresh: Action<Void>?) {
             self.value = value
             self.refresh = refresh
         }

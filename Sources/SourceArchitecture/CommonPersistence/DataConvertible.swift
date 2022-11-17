@@ -25,6 +25,8 @@
 
 import Foundation
 
+
+/// A protocol that requires any conforming type to specify how an instance may be converted *to* Data and decoded back *from* Data. This is used for persisting different types to the file system or UserDefaults, both of which require actual Data bytes to store rather than arbitrary types.
 public protocol DataConvertible {
     func encode() throws -> Data
     static func decode(from data: Data) throws -> Self

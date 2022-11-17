@@ -38,6 +38,7 @@ public class FilePersistence {
     }
 }
 
+/// A FileDescriptor provides the metadata / configuration needed to read / write a value to the file system. It has a single generic parameter which represents the concrete type that should be serialized to and decoded from file data. So a `FileDescriptor<String>` would represent a String that it saved and retrieved using the file system. The FileDescriptor ultimately must include a local file URL for the value to be saved to and retrieved from, and may also include a TimeInterval that the saved file should expire after. In order to initialize a FileDescriptor, you must provide closures which implement encoding and decoding of the value type to and from Data. These implementations are provided automatically if the value already conforms to Codable or DataConvertible protocols.
 public struct FileDescriptor<Value> {
 
     public let url: URL
@@ -86,8 +87,8 @@ public extension FileDescriptor where Value: DataConvertible {
 
 private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
 
-    @Action(FilePersistenceSource.set) private var setAction
-    @Action(FilePersistenceSource.clear) private var clearAction
+    @Action(set) private var setAction
+    @Action(clear) private var clearAction
     @Threadsafe private var expiredWorkItem: DispatchWorkItem?
     @Threadsafe private var saveWorkItem: DispatchWorkItem?
     @Threadsafe private var saveDate: Date = Date()
@@ -104,7 +105,7 @@ private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
             let persistedDate = attributes[FileAttributeKey.modificationDate] as? Date ?? .distantPast
             let data = try descriptor.decode(Data(contentsOf: descriptor.url))
             if let expireAfter = descriptor.expireAfter {
-                expirationDate = Date() + expireAfter
+                expirationDate = persistedDate + expireAfter
                 // If an expiration date is set, schedule an update at that time so that downstream subscribers are updated
                 let refreshTime = (persistedDate.timeIntervalSinceReferenceDate + expireAfter) - Date.timeIntervalSinceReferenceDate
                 if refreshTime > 0 {

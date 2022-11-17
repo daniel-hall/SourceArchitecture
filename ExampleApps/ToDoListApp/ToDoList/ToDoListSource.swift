@@ -86,15 +86,16 @@ public final class ToDoListSource: SourceOf<ToDoList> {
 
     public typealias Dependencies = PersistableToDoListDependency
 
-    @Action(ToDoListSource.add) private var addAction
+    @Action(add) private var addAction
+
+    @Source private var persistedList: Persistable<ToDoList>
 
     public lazy var initialModel = ToDoList(add: addAction)
-    private var persistedList: Source<Persistable<ToDoList>>
 
     public init(dependencies: Dependencies) {
-        self.persistedList = dependencies.persistedToDoList
+        _persistedList = dependencies.persistedToDoList
         super.init()
-        persistedList.subscribe(self, method: ToDoListSource.update)
+        _persistedList.subscribe(self, method: ToDoListSource.update)
     }
 
     /// Whenever a change to our persisted List is detected, deserialize all the saved items and update our Model to reflect the current state of the List and all ToDoItems. Note that in this sample app, the persisted List can be changed either locally or by newer versions being retrieved from the Network.
@@ -129,7 +130,7 @@ public final class ToDoListSource: SourceOf<ToDoList> {
             model.mutableItemSources.first { $0.id == item.id }?.model.isDeleted == false
         }
         let save = ToDoList(items: items, mutableItemSources: model.mutableItemSources.filter { !$0.model.isDeleted }, add: model.add, version: .now)
-        persistedList.model.set(save)
+        persistedList.set(save)
     }
 
     /// When a new ToDoItem should be added, create an empty new SavedToDoItem and write it to our persistence
@@ -138,6 +139,6 @@ public final class ToDoListSource: SourceOf<ToDoList> {
         let newSource = MutableSource(ToDoItem(id: UUID().uuidString, description: "", dateCompleted: nil, isDeleted: false)).eraseToSource()
         let updatedList = ToDoList(items: model.items + [ToDoItemViewSource(newSource).eraseToSource()], mutableItemSources: model.mutableItemSources + [newSource], add: model.add, version: .now)
         // Persist the new list
-        persistedList.model.set(updatedList)
+        persistedList.set(updatedList)
     }
 }

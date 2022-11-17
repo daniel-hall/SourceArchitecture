@@ -39,11 +39,11 @@ struct AppDependencies: PersistableToDoListDependency {
                                               // The network GET source for getting the network version of the value
                                               get: API.getToDoList,
                                               // We use a single shared list, no creating new ones on the network
-                                              create: { Source(model: .fetched(.init(value: $0, refresh: .doNothing))) },
+                                              create: { Source(model: .fetched(.init(value: $0, refresh: nil))) },
                                               // The network PUT source for writing local updates to remote
                                               update: { API.updateToDoList($0) },
                                               // We don't allow deleting the shared list
-                                              delete: { Source(model: .fetched(.init(value: $0, refresh: .doNothing))) }
+                                              delete: { Source(model: .fetched(.init(value: $0, refresh: nil))) }
         ).eraseToSource()
     }
 }

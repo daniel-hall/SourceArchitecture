@@ -36,27 +36,28 @@ public protocol Versioned {
 
 private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<Persistable<Value>> {
 
-    @Action(_NetworkSyncedPersistableSource.set) var setAction
-    @Action(_NetworkSyncedPersistableSource.clear) var clearAction
+    @Action(set) var setAction
+    @Action(clear) var clearAction
 
     @Threadsafe var currentFetchableValue: Source<Fetchable<Value>>?
     @Threadsafe var currentFetchableOptionalValue: Source<Fetchable<Value?>>?
 
-    let persisted: Source<CurrentAndPrevious<Persistable<Value>>>
+    @Source var persisted: CurrentAndPrevious<Persistable<Value>>
+    
     let get: () -> Source<Fetchable<Value?>>
     let create: (Value) -> Source<Fetchable<Value>>
     let update: (Value) -> Source<Fetchable<Value>>
     let delete: (Value) -> Source<Fetchable<Value>>
 
     lazy var initialModel = {
-        persisted.subscribe(self, method: _NetworkSyncedPersistableSource.handlePersistenceUpdate)
+        _persisted.subscribe(self, method: _NetworkSyncedPersistableSource.handlePersistenceUpdate)
         currentFetchableOptionalValue = get()
         currentFetchableOptionalValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableOptionalValue)
         return model
     }()
 
     init(persisted: Source<Persistable<Value>>, get: @escaping () -> Source<Fetchable<Value?>>, create: @escaping (Value) -> Source<Fetchable<Value>>, update: @escaping (Value) -> Source<Fetchable<Value>>, delete: @escaping (Value) -> Source<Fetchable<Value>>) {
-        self.persisted = persisted.currentAndPrevious()
+        _persisted = persisted.currentAndPrevious()
         self.get = get
         self.create = create
         self.update = update
@@ -76,12 +77,12 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
         switch value {
         case .fetched(let fetched):
             if let value = fetched.value {
-                guard let found = persisted.model.current.found else {
+                guard let found = persisted.current.found else {
                     // If we just deleted, don't save the value that was returned
-                    if persisted.model.current.notFound != nil, persisted.model.previous?.found != nil {
+                    if persisted.current.notFound != nil, persisted.previous?.found != nil {
                         return
                     }
-                    persisted.model.set(value)
+                    persisted.set(value)
                     return
                 }
                 if value.version > found.version {
@@ -93,12 +94,12 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
                 return
             }
             // If there is a nil response from the GET, then CREATE a synced record
-            if let found = persisted.model.current.found {
+            if let found = persisted.current.found {
                 currentFetchableValue = create(found.value)
                 currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
             }
         case .failure(let failure):
-            if let notFound = persisted.model.current.notFound, notFound.error?.localizedDescription != failure.error.localizedDescription {
+            if let notFound = persisted.current.notFound, notFound.error?.localizedDescription != failure.error.localizedDescription {
                 self.model = .notFound(.init(error: failure.error, set: setAction))
                 DispatchQueue.global().asyncAfter(deadline: .now() + 20) {
                     failure.retry?()
@@ -114,15 +115,15 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
         case .failure: return
         case .fetched(let fetched):
             // If we just deleted, don't update with the value that was returned
-            if persisted.model.current.notFound != nil, persisted.model.previous?.found != nil {
+            if persisted.current.notFound != nil, persisted.previous?.found != nil {
                 return
             }
-            guard let found = persisted.model.current.found else {
-                persisted.model.set(fetched.value)
+            guard let found = persisted.current.found else {
+                persisted.set(fetched.value)
                 return
             }
             if fetched.value.version >= found.version {
-                persisted.model.set(fetched.value)
+                persisted.set(fetched.value)
             } else {
                 currentFetchableValue = update(found.value)
                 currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
@@ -142,12 +143,12 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
     }
 
     func set(value: Value) {
-        switch persisted.model.current {
+        switch persisted.current {
         case .notFound:
-            persisted.model.current.set(value)
+            persisted.current.set(value)
         case .found(let found):
             if value.version > found.value.version {
-                persisted.model.current.set(value)
+                persisted.current.set(value)
                 currentFetchableValue = self.update(value)
                 currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
             }
@@ -156,7 +157,7 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
 
     func clear() {
         guard case .found(let found) = model else { return }
-        persisted.model.current.clear?()
+        persisted.current.clear?()
         currentFetchableValue = delete(found.value)
     }
 }

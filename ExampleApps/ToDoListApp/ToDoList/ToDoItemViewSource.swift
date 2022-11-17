@@ -28,8 +28,8 @@ import SourceArchitecture
 import SwiftUI
 
 internal final class ToDoItemViewSource: SourceOf<ToDoItemView.Model> {
-    @Action(ToDoItemViewSource.delete) private var deleteAction
-    @Action(ToDoItemViewSource.setCompleted) private var setCompletedAction
+    @Action(delete) private var deleteAction
+    @Action(setCompleted) private var setCompletedAction
 
     internal lazy var initialModel = ToDoItemView.Model(id: saved.model.id,
                                                         description: .init(source: self,

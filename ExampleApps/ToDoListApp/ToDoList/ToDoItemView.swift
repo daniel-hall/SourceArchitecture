@@ -42,27 +42,29 @@ public extension ToDoItemView {
 
 public struct ToDoItemView: View, Renderer {
 
-    @FocusState fileprivate var isFocused: Bool
+    @FocusState<String?>.Binding fileprivate var focus: String?
     @Source public var model: Model
     @Binding var isNew: Bool
+    @State var scroll = DispatchWorkItem { }
     
     let proxy: ScrollViewProxy
 
     var descriptionBinding: Binding<String> {
         model.$description.onChange {
             if $0.contains("\n") {
-                isFocused = false
+                focus = nil
                 return
             }
-            DispatchQueue.main.async {
-                withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) }
-            }
+            scroll.cancel()
+            scroll = .init { withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) } }
+            DispatchQueue.main.async(execute: scroll)
         }
     }
 
-    init(source: Source<Model>, isNew: Binding<Bool>?, proxy: ScrollViewProxy) {
+    init(source: Source<Model>, isNew: Binding<Bool>?, proxy: ScrollViewProxy, focus: FocusState<String?>.Binding) {
         self.proxy = proxy
         _model = source
+        _focus = focus
         _isNew = isNew ?? .init(get: { false }, set: { _ in })
     }
 
@@ -78,7 +80,7 @@ public struct ToDoItemView: View, Renderer {
                     .lineLimit(5)
                     .strikethrough(model.isCompleted, color: .gray)
                     .padding(5)
-                    .focused($isFocused)
+                    .focused($focus, equals: model.id)
             } else {
                 ZStack {
                     // — Workaround to make SwiftUI dynamically size the cell to match the TextEditor contents
@@ -91,26 +93,19 @@ public struct ToDoItemView: View, Renderer {
                     TextEditor(text: descriptionBinding)
                         .frame(alignment: .center)
                         .alignmentGuide(VerticalAlignment.center){ $0.height * 0.475 }
-                        .focused($isFocused)
+                        .focused($focus, equals: model.id)
                 }
             }
         }
         .foregroundColor(model.isCompleted ? .gray : .black)
         .onChange(of: model.isCompleted) {
-            if $0 { isFocused = false }
-        }
-        .onChange(of: $isFocused.wrappedValue) {
-            if $0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) }
-                }
-            }
+            if $0 { focus = nil }
         }
         .onAppear {
             if isNew {
+                focus = model.id
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     isNew = false
-                    isFocused = true
                 }
             }
         }

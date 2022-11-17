@@ -38,6 +38,7 @@ public class UserDefaultsPersistence {
     }
 }
 
+/// A UserDefaultsDescriptor provides the configuration details needed to read / write a value to UserDefaults. It has a single generic parameter which represents the concrete type that should be serialized to and decoded from Data for saving to UserDefaults (which can't just save any arbitrary types). So a `UserDefaultsDescriptor<String>` would represent a String that it saved and retrieved using the UserDefaults. The UserDefaultsDescriptor ultimately must include a key for the value to be saved to and retrieved from, and may also include a TimeInterval that the saved value should expire after. In order to initialize a UserDefaultsDescriptor, you must provide closures which implement encoding and decoding of the value type to and from Data. These implementations are provided automatically if the value already conforms to Codable or DataConvertible protocols.
 public struct UserDefaultsDescriptor<Value> {
 
     public let key: String
@@ -84,8 +85,8 @@ private struct UserDefaultsRecord: Codable {
 
 private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
 
-    @Action(UserDefaultsSource.set) private var setAction
-    @Action(UserDefaultsSource.clear) private var clearAction
+    @Action(set) private var setAction
+    @Action(clear) private var clearAction
     @Threadsafe private var expiredWorkItem: DispatchWorkItem?
     @Threadsafe private var expirationDate: Date?
     private var isExpired: Bool { (self.expirationDate ?? .distantFuture) <= Date()  }
@@ -100,7 +101,7 @@ private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
             do {
                 let record = try JSONDecoder().decode(UserDefaultsRecord.self, from: data)
                 if let expireAfter = descriptor.expireAfter {
-                    expirationDate = Date() + expireAfter
+                    expirationDate = record.persistedDate + expireAfter
                     // If an expiration date is set, schedule an update at that time so that downstream subscribers are updated
                     let refreshTime = (record.persistedDate.timeIntervalSinceReferenceDate + expireAfter) - Date.timeIntervalSinceReferenceDate
                     if refreshTime > 0 {
