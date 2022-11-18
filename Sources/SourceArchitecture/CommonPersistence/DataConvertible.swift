@@ -1,5 +1,5 @@
 //
-//  MutableSource.swift
+//  DataConvertible.swift
 //  SourceArchitecture
 //
 //  Copyright (c) 2022 Daniel Hall
@@ -26,30 +26,8 @@
 import Foundation
 
 
-private final class _MutableSource<Model>: SourceOf<Mutable<Model>> {
-
-    @Action(set) var setAction
-
-    let initialValue: Model
-    lazy var initialModel = Mutable(value: initialValue, set: setAction)
-
-    public init(_ initialValue: Model) {
-        self.initialValue = initialValue
-    }
-
-    private func set(_ value: Model) {
-        model = .init(value: value, set: setAction)
-    }
-}
-
-public final class MutableSource<Model>: ComposedSource<Mutable<Model>> {
-    public init(_ initialValue: Model) {
-        super.init{ _MutableSource(initialValue).eraseToSource() }
-    }
-}
-
-public extension Source where Model: MutableRepresentable {
-    func nonmutating() -> Source<Model.Value> {
-        map { $0.asMutable().value }
-    }
+/// A protocol that requires any conforming type to specify how an instance may be converted *to* Data and decoded back *from* Data. This is used for persisting different types to the file system or UserDefaults, both of which require actual Data bytes to store rather than arbitrary types.
+public protocol DataConvertible {
+    func encode() throws -> Data
+    static func decode(from data: Data) throws -> Self
 }

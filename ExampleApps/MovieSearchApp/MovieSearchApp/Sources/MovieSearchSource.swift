@@ -82,8 +82,10 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
 
     typealias Dependencies = FetchableMovieSearchResponseDependency & FetchableMovieThumbnailDependency & SelectedMovieDependency
 
-    @Action(MovieSearchSource.search) private var searchAction
-    @Action(MovieSearchSource.loadMore) private var loadMoreAction
+    @Action(search) private var searchAction
+    @Action(loadMore) private var loadMoreAction
+    @Action(refresh) private var refreshAction
+
 
     // The Source that will update with the actual network request results. A new one is created for every new API query
     @Threadsafe private var fetchableSource: Source<Fetchable<MovieSearchResponse>>?
@@ -93,7 +95,7 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
     @Threadsafe private var totalPages = 1
 
     /// The default initial value of the Model that this Source should return if no other model has been calculated or set yet
-    lazy var initialModel = Fetchable<MovieSearch>.fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: searchAction, loadMore: loadMoreAction), refresh: .doNothing))
+    lazy var initialModel = Fetchable<MovieSearch>.fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: searchAction, loadMore: loadMoreAction), refresh: refreshAction))
 
     private let dependencies: Dependencies
 
@@ -115,7 +117,7 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
                 // Create a Source to fetched the thumbnail image. If there is no URL then return a .failure with a placeholder image
                 let thumbnailSource = thumbnailURL.map {
                     dependencies.movieThumbnail(from: $0).addingPlaceholder(UIImage(systemName: "photo")!)
-                } ?? Source(wrappedValue: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No thumbnail URL"]), failedAttempts: 1, retry: nil)))
+                } ?? Source(model: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No thumbnail URL"]), failedAttempts: 1, retry: nil)))
                 
                 // Create a selection Action for this result by mapping the selected movie setSelection Action<Int?> to Action<Void>, providing the current ID as the input
                 let selectAction = dependencies.selectedMovie.model.set.map { id }
@@ -147,12 +149,16 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
         accumulatedResults = []
         guard let term = term else {
             // If our term is nil, then just show empty results
-            model = .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: searchAction, loadMore: loadMoreAction), refresh: .doNothing))
+            model = .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: searchAction, loadMore: loadMoreAction), refresh: refreshAction))
             return
         }
         // Fetch the search response from the API
         fetchableSource = dependencies.movieSearchResponse(for: term, page: nil)
         fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
+    }
+
+    private func refresh() {
+        fetchableSource?.model.fetched?.refresh?()
     }
 
     private func loadMore() {

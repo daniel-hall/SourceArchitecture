@@ -67,8 +67,8 @@ public struct Source<Model>: DynamicProperty {
         @available(*, unavailable) set {}
     }
 
-    public init(wrappedValue: Model) {
-        source = ObservableSource(wrappedValue)
+    public init(model: Model) {
+        source = ObservableSource(model)
     }
 
     fileprivate init<T: _SourceProtocol>(_ source: T) where T.Model == Model {
@@ -78,31 +78,37 @@ public struct Source<Model>: DynamicProperty {
     /// A method for other Sources to subscribe to this Source's updates in order to assemble or apply logic to different streams of values. This style of subscription (passing in the subscriber and method) instead of a closure prevents accidental capturing of objects that can result in retain cycles and leaks. It also allows subscription without needing to manage an AnyCancellable token to keep the subscription alive.
     ///
     /// - Parameter sendInitialModel: pass in false if you *don't* want the subscriber method to be called with the initial model value and to instead only be called with future updates.
-    public func subscribe<T: _SourceProtocol>(_ source: T, method: @escaping (T) -> (Model) -> Void, sendInitialModel: Bool = true) {
+    @discardableResult
+    public func subscribe<T: _SourceProtocol>(_ source: T, method: @escaping (T) -> (Model) -> Void, sendInitialModel: Bool = true) -> Source<Model> {
         self.source.subscribe(sendInitialModel: sendInitialModel, subscriber: source) { [weak source] in
             guard let source = source else { return }
             method(source)($0)
         }
+        return self
     }
 
     /// A method for other Sources to subscribe to this Source's updates in order to assemble or apply logic to different streams of values. This style of subscription (passing in the subscriber and method) instead of a closure prevents accidental capturing of objects that can result in retain cycles and leaks. It also allows subscription without needing to manage an AnyCancellable token to keep the subscription alive.
     ///
     /// - Parameter sendInitialModel: pass in false if you *don't* want the subscriber method to be called with the initial model value and to instead only be called with future updates.
-    public func subscribe<T: _SourceProtocol, U>(_ source: T, method: @escaping (T) -> (U) -> Void, sendInitialModel: Bool = true) where Model == U? {
+    @discardableResult
+    public func subscribe<T: _SourceProtocol, U>(_ source: T, method: @escaping (T) -> (U) -> Void, sendInitialModel: Bool = true) -> Source<Model> where Model == U? {
         self.source.subscribe(sendInitialModel: sendInitialModel, subscriber: source) { [weak source] in
             guard let source = source, let model = $0 else { return }
             method(source)(model)
         }
+        return self
     }
 
     /// A method for other Sources to subscribe to this Source's updates in order to assemble or apply logic to different streams of values. This style of subscription (passing in the subscriber and method) instead of a closure prevents accidental capturing of objects that can result in retain cycles and leaks. It also allows subscription without needing to manage an AnyCancellable token to keep the subscription alive.
     ///
     /// - Parameter sendInitialModel: pass in false if you *don't* want the subscriber method to be called with the initial model value and to instead only be called with future updates.
-    public func subscribe<T: _SourceProtocol>(_ source: T, method: @escaping (T) -> () -> Void, sendInitialModel: Bool = true) {
+    @discardableResult
+    public func subscribe<T: _SourceProtocol>(_ source: T, method: @escaping (T) -> () -> Void, sendInitialModel: Bool = true) -> Source<Model> {
         self.source.subscribe(sendInitialModel: sendInitialModel, subscriber: source) { [weak source] _ in
             guard let source = source else { return }
             method(source)()
         }
+        return self
     }
 
     /// Unsubscribes a Source from receiving further updates when this Source's model changes
@@ -125,7 +131,7 @@ public extension Source {
 }
 
 public extension _Source {
-    /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@Action(MyCustomSource.doSomething) var doSomethingAction`
+    /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@Action(doSomething) var doSomethingAction`
     @propertyWrapper
     struct Action<Source: _SourceProtocol, Input> {
         /// This property is unvailable and never callable, since the wrappedValue will instead be accessed through the static subscript in order to get a reference to the containing Source
@@ -146,12 +152,12 @@ public extension _Source {
             return .init(actionIdentifier: String(identifier), source: instance, method: action.method)
         }
 
-        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@Action(MyCustomSource.doSomething) var doSomethingAction`
+        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@Action(doSomething) var doSomethingAction`
         public init(_ method: @escaping (Source) -> (Input) -> Void) {
             self.method = method
         }
 
-        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@Action(MyCustomSource.doSomething) var doSomethingAction`
+        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@Action(doSomething) var doSomethingAction`
         public init(_ method: @escaping (Source) -> () -> Void) where Input == Void {
             self.method = { source in { [weak source] _ in if let source = source { return method(source)() } } }
         }
@@ -321,8 +327,12 @@ public struct Action<Input>: Codable {
         case actionIdentifier
         case sourceIdentifier
     }
-    public static var doNothing: Action<Input> {
-        .init(actionIdentifier: "doNothing") { _ in }
+    public static func placeholder(file: String = #file, line: Int = #line, column: Int = #column) -> Action<Input> {
+        let sourceIdentifier = file + ":\(line),\(column)"
+        return .init(actionIdentifier: "placeholder", sourceIdentifier: sourceIdentifier) {
+            assertionFailure("Attempted to execute a placeholder Action created at \(sourceIdentifier)")
+            ActionExecution._publisher.send(.init(sourceIdentifier: sourceIdentifier, actionIdentifier: "placeholder", input: $0, error: Error.placeholderActionInvoked(sourceIdentifier)))
+        }
     }
     internal let actionIdentifier: String
     private let sourceIdentifier: String
@@ -366,17 +376,13 @@ public struct Action<Input>: Codable {
         self.actionIdentifier = actionIdentifier
         self.sourceIdentifier = sourceIdentifier
         self.source = WeakReference()
-        self.execute = {
-            try testClosure($0)
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: $0))
-        }
+        self.execute = { try testClosure($0) }
     }
 
     /// Creates an Action which accepts a different type of input, but calls through to this original action. When the new Action is invoked with the new input, it will transform that input to the original input type and use that invoke the original Action.
     public func map<NewInput>(actionIdentifier: String = "\(#file).\(#line) MappedAction" , transform: @escaping (NewInput) -> Input) -> Action<NewInput> {
         .init(actionIdentifier: actionIdentifier, sourceIdentifier: self.description) {
             try self.execute(transform($0))
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: description, actionIdentifier: actionIdentifier, input: $0))
         }
     }
 }
@@ -385,18 +391,28 @@ public struct Action<Input>: Codable {
 // MARK: - Action Extensions -
 
 public extension Action {
-    func callAsFunction(_ input: Input, ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    // Executes the Action with the provided input. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
+    func callAsFunction(_ input: Input, ifUnavailable: ((ActionExecution) -> Bool)? = nil) {
         do {
             try execute(input)
+            ActionExecution._publisher.send(.init(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input, error: nil))
         } catch {
-            ifUnavailable?(error)
-            ActionExecution._errors.send(error)
+            _ = ActionExecution._errors
+            let execution = ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input, error: error)
+            if let ifUnavailable = ifUnavailable {
+                if ifUnavailable(execution) {
+                    ActionExecution._publisher.send(execution)
+                }
+            } else {
+                ActionExecution._publisher.send(execution)
+            }
         }
     }
 }
 
 public extension Action where Input == Void {
-    func callAsFunction(ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    // Executes the Action. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
+    func callAsFunction(ifUnavailable: ((ActionExecution) -> Bool)? = nil) {
         callAsFunction((), ifUnavailable: ifUnavailable)
     }
 }
@@ -420,6 +436,7 @@ fileprivate extension Action {
         case actionExpired(ActionDescription)
         case actionDecodedByWrongSource(ActionDescription)
         case actionDecodedWithInvalidMethod(ActionDescription)
+        case placeholderActionInvoked(ActionDescription)
 
         public var errorDescription: String? {
             switch self {
@@ -427,6 +444,7 @@ fileprivate extension Action {
             case .actionExpired(let action): return "Attempted to execute an expired Action with description: \(action). Expired Actions are those which were part of a Source's previous model state, but not its current model state."
             case .actionDecodedByWrongSource(let action): return "Attempted to execute an Action that was decoded by a different Source than it was encoded with. The Action's description is: \(action)."
             case .actionDecodedWithInvalidMethod(let action): return "Attempted to execute an Action that was decoded with an identifier that does not map to a method on the Source or maps to a method with the wrong input type. The Action's description is: \(action)."
+            case .placeholderActionInvoked(let action): return "Attempted to execute a placeholder Action create at \(action)"
             }
         }
     }
@@ -441,7 +459,6 @@ fileprivate extension Action {
                 throw Action.Error.actionExpired(actionIdentifier)
             }
             method(source)(input)
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input))
         }
     }
 
@@ -455,7 +472,6 @@ fileprivate extension Action {
                 throw Action.Error.actionExpired(actionIdentifier)
             }
             method(source)()
-            ActionExecution._publisher.send(ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: ()))
         }
     }
 }
@@ -480,14 +496,17 @@ public struct ActionExecution {
     public static let publisher = _publisher.eraseToAnyPublisher()
     fileprivate static let _publisher = PassthroughSubject<ActionExecution, Never>()
 
-    public static var errors: AnyPublisher<Error, Never> {
-        _defaultErrorSubscription?.cancel()
-        _defaultErrorSubscription = nil
+    public static var errors: AnyPublisher<ActionExecution, Never> {
+        defer {
+            _defaultErrorSubscription?.cancel()
+            _defaultErrorSubscription = nil
+        }
         return _errors.eraseToAnyPublisher()
     }
     fileprivate static let _errors = {
-        let publisher = PassthroughSubject<Error, Never>()
-        _defaultErrorSubscription = publisher.sink { error in
+        let publisher = ActionExecution.publisher.filter { $0.error != nil }
+        _defaultErrorSubscription = publisher.sink { execution in
+            guard let error = execution.error else { return }
             // assert ensures it only runs in non-release builds
             assert({
                 print(error)
@@ -503,6 +522,7 @@ public struct ActionExecution {
     public let actionIdentifier: String
     public var description: String { sourceIdentifier + "." + actionIdentifier }
     public let input: Any
+    public let error: Error?
 }
 
 

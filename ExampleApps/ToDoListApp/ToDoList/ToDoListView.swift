@@ -32,7 +32,10 @@ import SwiftUI
 public struct ToDoListView: View, Renderer {
 
     @Source public var model: ToDoList
+    @FocusState private var focus: String?
     @State private var hasNewCell = false
+    @State private var refresh = 0
+    @State private var scroll = DispatchWorkItem { }
 
     public init(source: Source<ToDoList>) {
         _model = source
@@ -42,7 +45,7 @@ public struct ToDoListView: View, Renderer {
         NavigationView {
             ScrollViewReader { proxy in
                 List(model.items) { item in
-                    ToDoItemView(source: item, isNew: item.id == model.items.last?.id ? $hasNewCell : nil, proxy: proxy)
+                    ToDoItemView(source: item, isNew: item.id == model.items.last?.id ? $hasNewCell : nil, proxy: proxy, focus: $focus)
                         .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", role: .destructive) {
@@ -50,7 +53,19 @@ public struct ToDoListView: View, Renderer {
                             }
                         }
                 }
+                .id(refresh)
                 .animation(.default, value: model.items)
+                .onChange(of: focus) {
+                    if let focus = $0 {
+                        scroll.cancel()
+                        scroll = .init {
+                            if model.items.contains(where: { $0.id == focus }) {
+                                withAnimation(.default) { proxy.scrollTo(focus, anchor: .bottom) }
+                            }
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: scroll)
+                    }
+                }
                 .navigationTitle("To Do")
                 .toolbar {
                     Button {
@@ -58,9 +73,15 @@ public struct ToDoListView: View, Renderer {
                         if hasNewCell { return }
                         hasNewCell = true
                         model.add()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.default) {
-                                proxy.scrollTo(model.items.last?.id ?? "0", anchor: .bottom)
+                        // All the below code is an unfortunate, janky workaround for the SwiftUI iOS 16 scrollTo() crash bug
+                        // See thread here: https://developer.apple.com/forums/thread/712510
+                        withAnimation(.default) {
+                            proxy.scrollTo(model.items.last?.id ?? "0", anchor: .bottom)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                refresh += 1
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    focus = model.items.last?.id
+                                }
                             }
                         }
                     } label: { Image(systemName: "plus").font(.headline) }

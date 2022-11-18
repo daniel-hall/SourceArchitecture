@@ -109,12 +109,12 @@ extension MovieSearchViewController: UITableViewDataSource {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "movieCell", for: indexPath) as? MovieCell, let results = self.model.fetched?.results, indexPath.row < results.count else {
             return UITableViewCell()
         }
-        cell.setModel(.init(wrappedValue: results[indexPath.row]))
+        cell.setModel(.init(model: results[indexPath.row]))
         return cell
     }
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if let cell = cell as? MovieCell, let results = self.model.fetched?.results, results.count > indexPath.row {
-            cell.setModel(.init(wrappedValue: results[indexPath.row]))
+            cell.setModel(.init(model: results[indexPath.row]))
             if indexPath.row > results.count - 10  {
                 model.fetched?.loadMore?()
             }
@@ -139,6 +139,8 @@ final class MovieCell: UITableViewCell, Renderer {
     @Source var thumbnail: FetchableWithPlaceholder<UIImage, UIImage>?
 
     required init?(coder: NSCoder) {
+        _model = .init(model: nil)
+        _thumbnail = .init(model: nil)
         super.init(coder: coder)
     }
 

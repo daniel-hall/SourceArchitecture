@@ -29,65 +29,91 @@ import Foundation
 /// A basic implementation of file-based persistence. Given a descriptor with the domain, directory and path for a file, this can read and write to it. Note that this implementation uses a weak dictionary which will hold a shared instance of the file data in memory as long as some client code is referencing it. When all references are released, the latest data will be written to file and released from memory. This optimization minimizes memory usage and synchronization requirements.
 public class FilePersistence {
 
-    public struct Descriptor<Value> {
-
-        public let url: URL
-        public let expireAfter: TimeInterval?
-        fileprivate let decode: (Data) throws -> Value
-        fileprivate let encode: (Value) throws -> Data
-
-        public init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil, encode: @escaping(Value) throws -> Data, decode: @escaping(Data) throws -> Value) {
-            self.url = FileManager.default.urls(for: directory, in: domainMask).first!.appendingPathComponent(path)
-            self.expireAfter = expireAfter
-            self.encode = encode
-            self.decode = decode
-        }
-
-        public init(url: URL, expireAfter: TimeInterval? = nil, encode: @escaping(Value) throws -> Data, decode: @escaping(Data) throws -> Value) {
-            self.url = url
-            self.expireAfter = expireAfter
-            self.encode = encode
-            self.decode = decode
-        }
-    }
-
     private let dictionary = WeakDictionary<String, AnyObject>()
 
     public init() { }
 
-    public subscript<Value>(descriptor: Descriptor<Value>) -> Source<Persistable<Value>> {
+    public func persistableSource<Value>(for descriptor: FileDescriptor<Value>) -> Source<Persistable<Value>> {
         dictionary[descriptor.url.absoluteString] { FilePersistenceSource(descriptor: descriptor).eraseToSource() }
+    }
+}
+
+/// A FileDescriptor provides the metadata / configuration needed to read / write a value to the file system. It has a single generic parameter which represents the concrete type that should be serialized to and decoded from file data. So a `FileDescriptor<String>` would represent a String that it saved and retrieved using the file system. The FileDescriptor ultimately must include a local file URL for the value to be saved to and retrieved from, and may also include a TimeInterval that the saved file should expire after. In order to initialize a FileDescriptor, you must provide closures which implement encoding and decoding of the value type to and from Data. These implementations are provided automatically if the value already conforms to Codable or DataConvertible protocols.
+public struct FileDescriptor<Value> {
+
+    public let url: URL
+    public let expireAfter: TimeInterval?
+    fileprivate let decode: (Data) throws -> Value
+    fileprivate let encode: (Value) throws -> Data
+
+    public init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil, encode: @escaping(Value) throws -> Data, decode: @escaping(Data) throws -> Value) {
+        self.url = FileManager.default.urls(for: directory, in: domainMask).first!.appendingPathComponent(path)
+        self.expireAfter = expireAfter
+        self.encode = encode
+        self.decode = decode
+    }
+
+    public init(url: URL, expireAfter: TimeInterval? = nil, encode: @escaping(Value) throws -> Data, decode: @escaping(Data) throws -> Value) {
+        self.url = url
+        self.expireAfter = expireAfter
+        self.encode = encode
+        self.decode = decode
+    }
+}
+
+public extension FileDescriptor where Value: Codable {
+    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil) {
+        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: { try JSONEncoder().encode($0) }, decode: { try JSONDecoder().decode(Value.self, from: $0) })
+    }
+}
+
+public extension FileDescriptor where Value: Encodable {
+    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil, decode: @escaping(Data) throws -> Value) {
+        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: { try JSONEncoder().encode($0) }, decode: decode)
+    }
+}
+
+public extension FileDescriptor where Value: Decodable {
+    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil, encode: @escaping(Value) throws -> Data) {
+        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: encode, decode: { try JSONDecoder().decode(Value.self, from: $0) })
+    }
+}
+
+public extension FileDescriptor where Value: DataConvertible {
+    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil) {
+        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: { try $0.encode() }, decode: { try Value.decode(from: $0) })
     }
 }
 
 private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
 
-    @Action(FilePersistenceSource.set) private var setAction
-    @Action(FilePersistenceSource.clear) private var clearAction
+    @Action(set) private var setAction
+    @Action(clear) private var clearAction
     @Threadsafe private var expiredWorkItem: DispatchWorkItem?
     @Threadsafe private var saveWorkItem: DispatchWorkItem?
     @Threadsafe private var saveDate: Date = Date()
+    @Threadsafe private var expirationDate: Date?
+    private var isExpired: Bool { (expirationDate ?? .distantFuture) <= Date() }
     fileprivate lazy var initialModel = Persistable<Value>.notFound(.init(set: setAction))
-    private let descriptor: FilePersistence.Descriptor<Value>
+    private let descriptor: FileDescriptor<Value>
 
-    fileprivate init(descriptor: FilePersistence.Descriptor<Value>) {
+    fileprivate init(descriptor: FileDescriptor<Value>) {
         self.descriptor = descriptor
         super.init()
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: descriptor.url.path)
             let persistedDate = attributes[FileAttributeKey.modificationDate] as? Date ?? .distantPast
             let data = try descriptor.decode(Data(contentsOf: descriptor.url))
-            var isExpired = { false }
             if let expireAfter = descriptor.expireAfter {
-                isExpired = { expireAfter < Date.timeIntervalSinceReferenceDate - persistedDate.timeIntervalSinceReferenceDate }
+                expirationDate = persistedDate + expireAfter
                 // If an expiration date is set, schedule an update at that time so that downstream subscribers are updated
                 let refreshTime = (persistedDate.timeIntervalSinceReferenceDate + expireAfter) - Date.timeIntervalSinceReferenceDate
                 if refreshTime > 0 {
                     let workItem = DispatchWorkItem {
                         [weak self] in
                         guard let self = self else { return }
-                        if case .found(let found) = self.model, found.isExpired {
-                            self.model = .found(found)
+                        if case .found(let found) = self.model, self.isExpired {
+                            self.model = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
                         }
                     }
                     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + refreshTime, execute: workItem)
@@ -104,16 +130,14 @@ private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
         expiredWorkItem?.cancel()
         let saveDate = Date()
         self.saveDate = saveDate
-        var isExpired = { false }
+        expirationDate = nil
         if let expireAfter = descriptor.expireAfter {
-            isExpired = {
-                expireAfter < Date.timeIntervalSinceReferenceDate - saveDate.timeIntervalSinceReferenceDate
-            }
+            expirationDate = Date() + expireAfter
             // If an expiration date is set, schedule an update at that time so that downstream subscribers are updated
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
-                if case .found(let found) = self.model, found.isExpired {
-                    self.model = .found(found)
+                if case .found(let found) = self.model, self.isExpired {
+                    self.model = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
                 }
             }
             DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + expireAfter, execute: workItem)
@@ -149,23 +173,5 @@ private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
         saveWorkItem?.cancel()
         model = .notFound(.init(set: setAction))
         try? FileManager.default.removeItem(at: descriptor.url)
-    }
-}
-
-public extension FilePersistence.Descriptor where Value: Codable {
-    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil) {
-        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: { try JSONEncoder().encode($0) }, decode: { try JSONDecoder().decode(Value.self, from: $0) })
-    }
-}
-
-public extension FilePersistence.Descriptor where Value: Encodable {
-    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil, decode: @escaping(Data) throws -> Value) {
-        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: { try JSONEncoder().encode($0) }, decode: decode)
-    }
-}
-
-public extension FilePersistence.Descriptor where Value: Decodable {
-    init(domainMask: FileManager.SearchPathDomainMask = .userDomainMask, directory: FileManager.SearchPathDirectory = .cachesDirectory, path: String, expireAfter: TimeInterval? = nil, encode: @escaping(Value) throws -> Data) {
-        self.init(domainMask: domainMask, directory: directory, path: path, expireAfter: expireAfter, encode: encode, decode: { try JSONDecoder().decode(Value.self, from: $0) })
     }
 }

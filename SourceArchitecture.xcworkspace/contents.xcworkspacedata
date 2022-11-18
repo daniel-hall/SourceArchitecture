@@ -117,6 +117,9 @@
             <FileRef
                location = "group:WeakDictionary.swift">
             </FileRef>
+            <FileRef
+               location = "group:DataConvertible.swift">
+            </FileRef>
          </Group>
       </Group>
    </Group>

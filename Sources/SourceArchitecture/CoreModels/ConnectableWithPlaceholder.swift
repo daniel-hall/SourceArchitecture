@@ -26,6 +26,7 @@
 import Foundation
 
 
+/// A `ConnectableWithPlaceholder<Value, Placeholder>` represents a value that doesn't materialize until it is needed (when `connect()` is called) and which can be discarded when not needed (when `disconnect()` is called). This is good for modeling deferred work which can produce a value, but only at the time it is needed. In the meantime, it can still contain a placeholder value to show in place of the real value until it is retrieved. It is particularly important for values rendered by SwiftUI Lists and and similar views. These views will hold and retain any model or value they are initialized with even if not on screen. So for thousands of rows in a SwiftUI List, there will be thousands of items (possibly all updating in the background!) held in memory even if there are only 10 cells actually visible and being rendered. By implementing these SwiftUI cells / rows with a `ConnectableWithPlaceholder<Model, Placeholder>`, each one of them can use `.onAppear { model.connect() }` and `.onDisappear { model.disconnect() }` to only load and hold values when the view is actually visible, and release the value (discontinuing any updates or logic) and free its memory when the view is no longer visible. The placeholder is usually a lightweight value that can be used in the meantime before connecting the full final model.
 public enum ConnectableWithPlaceholder<Value, Placeholder> {
     case connected(Connected)
     case disconnected(Disconnected)
@@ -86,11 +87,13 @@ public enum ConnectableWithPlaceholder<Value, Placeholder> {
         }
     }
 
-    public func connect(ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    /// Signals that the expected Value should be created and made available
+    public func connect(ifUnavailable: ((ActionExecution) -> Bool)? = nil) {
         disconnected?.connect(ifUnavailable: ifUnavailable)
     }
 
-    public func disconnect(ifUnavailable: ((Swift.Error) -> Void)? = nil) {
+    /// Release the value to free memory and cease any activity it may be performing
+    public func disconnect(ifUnavailable: ((ActionExecution) -> Bool)? = nil) {
         connected?.disconnect(ifUnavailable: ifUnavailable)
     }
 }

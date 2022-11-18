@@ -36,8 +36,7 @@ private final class FlatMappedSource<Input, Model>: SourceOf<Model> {
 
     lazy var initialModel: Model =  {
         _input.subscribe(self, method: FlatMappedSource.updateSource, sendInitialModel: false)
-        mappedSource = transform(input)
-        mappedSource?.subscribe(self, method: FlatMappedSource.updateModel, sendInitialModel: false)
+        mappedSource = transform(input).subscribe(self, method: FlatMappedSource.updateModel, sendInitialModel: false)
         return mappedSource!.model
     }()
 
@@ -51,8 +50,7 @@ private final class FlatMappedSource<Input, Model>: SourceOf<Model> {
     }
     
     func updateSource(input: Input) {
-        mappedSource = transform(input)
-        mappedSource?.subscribe(self, method: FlatMappedSource.updateModel)
+        mappedSource = transform(input).subscribe(self, method: FlatMappedSource.updateModel)
     }
 }
 

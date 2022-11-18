@@ -55,7 +55,7 @@ private class PublishedWrapper<Value> {
 
 public extension Published {
     mutating func eraseToSource() -> Source<Value> {
-        var published = PublishedWrapper(self)
+        let published = PublishedWrapper(self)
         return CombinePublisherSource(self.projectedValue, initialModel: published.value).eraseToSource()
     }
 }

@@ -65,10 +65,10 @@ public enum FetchableWithPlaceholder<Value, Placeholder> {
     
     @dynamicMemberLookup
     public struct Fetched {
-        public let refresh: Action<Void>
+        public let refresh: Action<Void>?
         public let value: Value
         public let placeholder: Placeholder
-        public init(placeholder: Placeholder, value: Value, refresh: Action<Void>) {
+        public init(placeholder: Placeholder, value: Value, refresh: Action<Void>?) {
             self.placeholder = placeholder
             self.value = value
             self.refresh = refresh

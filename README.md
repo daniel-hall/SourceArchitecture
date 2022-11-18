@@ -70,7 +70,7 @@ Next, we will create the Action that this Source will provide to get a new rando
 final class QuoteViewSource: SourceOf<QuoteView.Model> {
 
   // In order to create an Action, the Source declares an @Action property with the method it should invoke
-  @Action(QuoteViewSource.getRandomQuote) private var getRandomQuoteAction
+  @Action(getRandomQuote) private var getRandomQuoteAction
 
   private func getRandomQuote() {
     let url = URL(string: "http://quotes.stormconsultancy.co.uk/random.json")!
@@ -103,7 +103,7 @@ Lastly, subclassing `SourceOf` requires our Source to also define an initial val
 final class QuoteViewSource: SourceOf<QuoteView.Model> {
 
   // In order to create an Action, the Source declares an @Action property with the method it should invoke
-  @Action(QuoteViewSource.getRandomQuote) private var getRandomQuoteAction
+  @Action(getRandomQuote) private var getRandomQuoteAction
   
   lazy var initialModel = QuoteView.Model(quote: "", author: "", getRandomQuote: getRandomQuoteAction)
   
@@ -268,8 +268,8 @@ So in about fifty lines of code we created a small app that displays a screen wi
 
   ```swift
   final class AuthManager: SourceOf<AuthenticationModel> {
-    @Action(AuthManager.logIn) var logInAction // Connect Action to private method
-    @Action(AuthManager.logOut) var logOutAction // Connect Action to private method
+    @Action(logIn) var logInAction // Connect Action to private method
+    @Action(logOut) var logOutAction // Connect Action to private method
   
     // Specifying an initial value for the model is the single CustomSource requirement
     lazy var initialModel: AuthenticationModel 

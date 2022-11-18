@@ -29,14 +29,14 @@ import Foundation
 private final class FetchAfterDelaySource<Model>: SourceOf<Fetchable<Model>> {
 
     fileprivate var initialModel: Fetchable<Model> = .fetching(.init(progress: nil))
-    private let fetchable: Source<Fetchable<Model>>
+    @Source private var fetchable: Fetchable<Model>
 
     fileprivate init(fetchable: Source<Fetchable<Model>>, delay: TimeInterval) {
-        self.fetchable = fetchable
+        _fetchable = fetchable
         super.init()
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [weak self] in
             if let self = self {
-                self.fetchable.subscribe(self, method: FetchAfterDelaySource.update)
+                fetchable.subscribe(self, method: FetchAfterDelaySource.update)
             }
         }
     }

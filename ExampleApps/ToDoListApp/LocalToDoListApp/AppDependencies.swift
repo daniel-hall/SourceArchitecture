@@ -33,8 +33,8 @@ import ToDoList
 struct AppDependencies: PersistableToDoListDependency {
     private let filePersistence = FilePersistence()
     var persistedToDoList: Source<Persistable<ToDoList>> {
-        let descriptor = FilePersistence.Descriptor<ToDoList>(path: "ToDoList")
-        return filePersistence[descriptor]
+        let descriptor = FileDescriptor<ToDoList>(path: "ToDoList")
+        return filePersistence.persistableSource(for: descriptor)
     }
 }
 
