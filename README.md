@@ -29,12 +29,8 @@ struct QuoteView: View, Renderer {
     let getRandomQuote: Action<Void>
   }
 
-    // A Renderer just needs to have a property called "model" that is a Source of the type to be rendered.
+  // A Renderer just needs to have a property called "model" that is a Source of the type to be rendered.
   @Source var model: Model
-
-  init(source: Source<Model>) {
-      _model = source
-  }
 
   var body: some View {
     VStack {
