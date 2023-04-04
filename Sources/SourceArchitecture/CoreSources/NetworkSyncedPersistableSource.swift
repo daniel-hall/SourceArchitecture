@@ -36,8 +36,8 @@ public protocol Versioned {
 
 private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<Persistable<Value>> {
 
-    @Action(set) var setAction
-    @Action(clear) var clearAction
+    @ActionFromMethod(set) var setAction
+    @ActionFromMethod(clear) var clearAction
 
     @Threadsafe var currentFetchableValue: Source<Fetchable<Value>>?
     @Threadsafe var currentFetchableOptionalValue: Source<Fetchable<Value?>>?

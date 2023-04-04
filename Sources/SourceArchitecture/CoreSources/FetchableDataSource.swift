@@ -28,8 +28,8 @@ import Foundation
 
 private final class _FetchableDataSource: SourceOf<Fetchable<Data>> {
 
-    @Action(retry) var retryAction
-    @Action(refresh) var refreshAction
+    @ActionFromMethod(retry) var retryAction
+    @ActionFromMethod(refresh) var refreshAction
 
     @Threadsafe var failedAttempts = 0
     @Threadsafe var dataTask: URLSessionDataTask?

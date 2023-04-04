@@ -86,7 +86,7 @@ public final class ToDoListSource: SourceOf<ToDoList> {
 
     public typealias Dependencies = PersistableToDoListDependency
 
-    @Action(add) private var addAction
+    @ActionFromMethod(add) private var addAction
 
     @Source private var persistedList: Persistable<ToDoList>
 

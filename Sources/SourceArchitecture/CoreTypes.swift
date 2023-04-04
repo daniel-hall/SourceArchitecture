@@ -131,20 +131,20 @@ public extension Source {
 }
 
 public extension _Source {
-    /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@Action(doSomething) var doSomethingAction`
+    /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@ActionFromMethod(doSomething) var doSomethingAction`
     @propertyWrapper
-    struct Action<Source: _SourceProtocol, Input> {
+    struct ActionFromMethod<Source: _SourceProtocol, Input> {
         /// This property is unvailable and never callable, since the wrappedValue will instead be accessed through the static subscript in order to get a reference to the containing Source
         @available(*, unavailable)
         public var wrappedValue: SourceArchitecture.Action<Input> { fatalError() }
         private let uuid = UUID().uuidString
         private let method: (Source) -> (Input) -> Void
 
-        /// This method of returning the wrappedValue allows us to also access the Source instance that contains this property. It also allows us to restrict usage of the @Action property wrapper to only be used in Source
+        /// This method of returning the wrappedValue allows us to also access the Source instance that contains this property. It also allows us to restrict usage of the @ActionFromMethod property wrapper to only be used in Source
         public static subscript(
             _enclosingInstance instance: Source,
             wrapped wrappedKeyPath: KeyPath<Source, SourceArchitecture.Action<Input>>,
-            storage storageKeyPath: KeyPath<Source, Action<Source, Input>>
+            storage storageKeyPath: KeyPath<Source, ActionFromMethod<Source, Input>>
         ) -> SourceArchitecture.Action<Input> {
             let action = instance[keyPath: storageKeyPath]
             // Reflect through all properties of our containing instance until we find the one that is this instance, and get the label. That will tell us what this Action is named based on its property name.
@@ -152,12 +152,12 @@ public extension _Source {
             return .init(actionIdentifier: String(identifier), source: instance, method: action.method)
         }
 
-        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@Action(doSomething) var doSomethingAction`
+        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@ActionFromMethod(doSomething) var doSomethingAction`
         public init(_ method: @escaping (Source) -> (Input) -> Void) {
             self.method = method
         }
 
-        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@Action(doSomething) var doSomethingAction`
+        /// Initialize this property wrapper by passing in the method that you want to be called by this Action. For example: `@ActionFromMethod(doSomething) var doSomethingAction`
         public init(_ method: @escaping (Source) -> () -> Void) where Input == Void {
             self.method = { source in { [weak source] _ in if let source = source { return method(source)() } } }
         }
@@ -553,7 +553,7 @@ fileprivate protocol SourceMethodResolving {
     func resolvedMethod<ResolvedInput, ForSource: _SourceProtocol>(for source: ForSource, input: ResolvedInput) -> (() -> Void)?
 }
 
-extension _Source.Action: SourceMethodResolving {
+extension _Source.ActionFromMethod: SourceMethodResolving {
     /// Retrieves the method that should be called by a decoded Action
     fileprivate func resolvedMethod<ResolvedInput, ForSource: _SourceProtocol>(for source: ForSource, input: ResolvedInput) -> (() -> Void)? {
         guard let source = source as? Source, let input = input as? Input else { return nil }

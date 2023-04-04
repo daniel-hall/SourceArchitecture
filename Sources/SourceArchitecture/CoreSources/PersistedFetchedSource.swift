@@ -29,7 +29,7 @@ import Foundation
 /// A Source that automatically reads and writes a Fetchable value from and to persistence, or from the Network (or other channel for fetching) as needed. Defaults to using the persisted value when it exists and in such a case will never make a network request. Will make a network request if the persisted value is not found or is expired. Will make a network request if refresh() is explicitly called on the model.
 private final class PersistedFetchedSource<Value>: SourceOf<Fetchable<Value>> {
 
-    @Action(refresh) var refreshAction
+    @ActionFromMethod(refresh) var refreshAction
     @Threadsafe var fetchableSource: Source<Fetchable<Value>>?
     @Source var persisted: Persistable<Value>
 

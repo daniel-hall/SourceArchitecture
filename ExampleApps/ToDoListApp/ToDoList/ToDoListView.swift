@@ -45,7 +45,7 @@ public struct ToDoListView: View, Renderer {
         NavigationView {
             ScrollViewReader { proxy in
                 List(model.items) { item in
-                    ToDoItemView(source: item, isNew: item.id == model.items.last?.id ? $hasNewCell : nil, proxy: proxy, focus: $focus)
+                    ToDoItemView(source: item, isNew: item.id == model.items.last?.id ? $hasNewCell : nil, proxy: model.items.count > 5 ? proxy : nil, focus: $focus)
                         .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", role: .destructive) {

@@ -47,7 +47,7 @@ public struct ToDoItemView: View, Renderer {
     @Binding var isNew: Bool
     @State var scroll = DispatchWorkItem { }
     
-    let proxy: ScrollViewProxy
+    let proxy: ScrollViewProxy?
 
     var descriptionBinding: Binding<String> {
         model.$description.onChange {
@@ -56,12 +56,12 @@ public struct ToDoItemView: View, Renderer {
                 return
             }
             scroll.cancel()
-            scroll = .init { withAnimation(.default) { proxy.scrollTo(model.id, anchor: .bottom) } }
+            scroll = .init { withAnimation(.default) { proxy?.scrollTo(model.id, anchor: .bottom) } }
             DispatchQueue.main.async(execute: scroll)
         }
     }
 
-    init(source: Source<Model>, isNew: Binding<Bool>?, proxy: ScrollViewProxy, focus: FocusState<String?>.Binding) {
+    init(source: Source<Model>, isNew: Binding<Bool>?, proxy: ScrollViewProxy?, focus: FocusState<String?>.Binding) {
         self.proxy = proxy
         _model = source
         _focus = focus
