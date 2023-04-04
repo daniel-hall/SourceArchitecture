@@ -87,8 +87,8 @@ public extension FileDescriptor where Value: DataConvertible {
 
 private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
 
-    @Action(set) private var setAction
-    @Action(clear) private var clearAction
+    @ActionFromMethod(set) private var setAction
+    @ActionFromMethod(clear) private var clearAction
     @Threadsafe private var expiredWorkItem: DispatchWorkItem?
     @Threadsafe private var saveWorkItem: DispatchWorkItem?
     @Threadsafe private var saveDate: Date = Date()

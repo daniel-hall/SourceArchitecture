@@ -341,8 +341,8 @@ extension CachedItem {
 /// The Source that manages each cached value. If multiple client sites are using the same Cached item, they will have a reference to the same Source and get updates when the value is changed from other client code, etc.
 fileprivate final class CachePersistenceSource: SourceOf<CachedItem> {
 
-    @Action(set) var setAction
-    @Action(clear) var clearAction
+    @ActionFromMethod(set) var setAction
+    @ActionFromMethod(clear) var clearAction
     @Threadsafe var expireWorkItem: DispatchWorkItem?
 
     let updateClosure: () -> Void

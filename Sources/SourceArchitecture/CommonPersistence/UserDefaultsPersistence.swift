@@ -85,8 +85,8 @@ private struct UserDefaultsRecord: Codable {
 
 private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
 
-    @Action(set) private var setAction
-    @Action(clear) private var clearAction
+    @ActionFromMethod(set) private var setAction
+    @ActionFromMethod(clear) private var clearAction
     @Threadsafe private var expiredWorkItem: DispatchWorkItem?
     @Threadsafe private var expirationDate: Date?
     private var isExpired: Bool { (self.expirationDate ?? .distantFuture) <= Date()  }

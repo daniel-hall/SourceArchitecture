@@ -29,8 +29,8 @@ import Foundation
 /// A type of Source which can create its contents when connected and clear them when disconnected. It is initialized with a closure that creates a Source. When the `connect` action is invoked, it will execute the closure to connect an input Source and forward its values. When `disconnect`is invoked, the input Source is set to nil, releasing the memory and stopping any behaviors
 private final class _ConnectableSource<Value>: SourceOf<Connectable<Value>> {
 
-    @Action(connect) var connectAction
-    @Action(disconnect) var disconnectAction
+    @ActionFromMethod(connect) var connectAction
+    @ActionFromMethod(disconnect) var disconnectAction
 
     @Threadsafe var source: Source<Value>?
 

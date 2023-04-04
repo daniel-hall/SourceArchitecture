@@ -29,8 +29,8 @@ import Foundation
 /// A Source that combines the result of two model states of Fetchable values. The CombinedFetchable source model will be .fetching if either input is still fetching, .error if either input returns an .error state, or will be .found if BOTH inputs are in a .found state.
 private final class CombinedFetchableSource<First, Second>: SourceOf<Fetchable<(First, Second)>> {
 
-    @Action(refresh) var refreshAction
-    @Action(retry) var retryAction
+    @ActionFromMethod(refresh) var refreshAction
+    @ActionFromMethod(retry) var retryAction
 
     @Threadsafe var isRetrying = false
     @Threadsafe var firstHasRefreshed = true

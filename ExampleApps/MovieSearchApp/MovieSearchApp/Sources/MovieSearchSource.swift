@@ -82,9 +82,9 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
 
     typealias Dependencies = FetchableMovieSearchResponseDependency & FetchableMovieThumbnailDependency & SelectedMovieDependency
 
-    @Action(search) private var searchAction
-    @Action(loadMore) private var loadMoreAction
-    @Action(refresh) private var refreshAction
+    @ActionFromMethod(search) private var searchAction
+    @ActionFromMethod(loadMore) private var loadMoreAction
+    @ActionFromMethod(refresh) private var refreshAction
 
 
     // The Source that will update with the actual network request results. A new one is created for every new API query

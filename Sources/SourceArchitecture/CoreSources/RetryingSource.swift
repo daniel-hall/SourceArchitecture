@@ -62,7 +62,7 @@ public enum ForwardErrorAfter {
 /// A Source that retries using a specified RetryStrategy for as long as its Fetchable model is an .error
 private final class RetryingSource<Value>: SourceOf<Fetchable<Value>> {
 
-    @Action(retry) var retryAction
+    @ActionFromMethod(retry) var retryAction
     @Source var fetchableValue: Fetchable<Value>
 
     var interval: TimeInterval
