@@ -11,6 +11,15 @@ let package = Package(
         .library(
             name: "SourceArchitecture",
             targets: ["SourceArchitecture"]),
+        .library(
+            name: "SourceArchitectureStatic",
+            type: .static,
+            targets: ["SourceArchitecture"]),
+        .library(
+            name: "SourceArchitectureDynamic",
+            type: .dynamic,
+            targets: ["SourceArchitecture"]),
+
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.

@@ -38,7 +38,7 @@ import SwiftUI
 ///  - A Source allows other Sources to subscribe to updated values without closures, to prevent accidental capture of values or needing to manage subscription tokens (AnyCancellables in Combine).
 @propertyWrapper
 public struct Source<Model>: DynamicProperty {
-
+    public typealias Model = Model
     @ObservedObject private var source: ObservableSource<Model>
 
     public var model: Model { wrappedValue }
@@ -252,7 +252,7 @@ public extension _SourceProtocol {
     }
 
     /// Create a type-erased Source of the Model type from this implementation, which can be used by Renderers or subscribed to by other Sources.
-    func eraseToSource() -> Source<Model> {
+    func eraseToSource<T>() -> Source<T> where Model == T {
         Source(self)
     }
 }
