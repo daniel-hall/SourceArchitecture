@@ -130,6 +130,14 @@ public extension Source {
     }
 }
 
+extension Source: CustomDebugStringConvertible {
+    public var debugDescription: String { "Source<\(Model.self)>(model: \(model)" }
+}
+
+extension Source: CustomStringConvertible {
+    public var description: String { "Source<\(Model.self)>(model: \(model)" }
+}
+
 public extension _Source {
     /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@ActionFromMethod(doSomething) var doSomethingAction`
     @propertyWrapper
@@ -340,7 +348,7 @@ public struct Action<Input>: Codable {
     private let execute: (Input) throws -> Void
 
     public var description: String {
-        sourceIdentifier + "." + actionIdentifier
+        "Action<\(Input.self)>"
     }
 
     public init(from decoder: Decoder) throws {
@@ -487,6 +495,12 @@ extension Action: IdentifiableAction {
         guard self.source.object == nil else { return }
         guard (source as? DecodableActionSource)?.decodableActionSourceIdentifier == sourceIdentifier else { return }
         self.source.object = source
+    }
+}
+
+extension Action: CustomStringConvertible, CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "Action<\(Input.self)>(actionIdentifier: \(actionIdentifier), sourceIdentifier: \(sourceIdentifier))"
     }
 }
 
