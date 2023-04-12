@@ -131,11 +131,11 @@ public extension Source {
 }
 
 extension Source: CustomDebugStringConvertible {
-    public var debugDescription: String { "Source<\(Model.self)>(model: \(model)" }
+    public var debugDescription: String { "Source<\(Model.self)>(model: \(model))" }
 }
 
 extension Source: CustomStringConvertible {
-    public var description: String { "Source<\(Model.self)>(model: \(model)" }
+    public var description: String { "Source<\(Model.self)>(model: \(model))" }
 }
 
 public extension _Source {
