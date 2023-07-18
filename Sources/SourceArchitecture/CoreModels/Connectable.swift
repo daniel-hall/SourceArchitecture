@@ -1,8 +1,7 @@
 //
-//  Connectable.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +30,6 @@ public enum Connectable<Value> {
     case connected(Connected)
     case disconnected(Disconnected)
     
-    @dynamicMemberLookup
     public struct Connected {
         public let disconnect: Action<Void>
         public let value: Value
@@ -39,14 +37,6 @@ public enum Connectable<Value> {
         public init(value: Value, disconnect: Action<Void>) {
             self.value = value
             self.disconnect = disconnect
-        }
-        
-        public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-            value[keyPath: keyPath]
-        }
-        
-        public subscript<T, V>(dynamicMember keyPath: KeyPath<V, T>) -> T? where Value == Optional<V> {
-            value?[keyPath: keyPath]
         }
     }
     
@@ -131,9 +121,9 @@ extension Connectable: Equatable where Value: Equatable {
     }
 }
 
-public extension Source where Model: ConnectableRepresentable {
+public extension AnySource where Model: ConnectableRepresentable {
     // Disfavored overload because if the Model is also ConnectableWithPlaceholderRepresentable, we want to prefer that version of mapConnectedValue to preserve the more complete type
-    @_disfavoredOverload func mapConnectedValue<NewValue>(_ transform: @escaping (Model.Value) -> NewValue) -> Source<Connectable<NewValue>> {
+    @_disfavoredOverload func mapConnectedValue<NewValue>(_ transform: @escaping (Model.Value) -> NewValue) -> AnySource<Connectable<NewValue>> {
         map { $0.asConnectable().map(transform) }
     }
 }

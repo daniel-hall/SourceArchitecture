@@ -35,40 +35,40 @@ fileprivate struct AppDependencies: LazyStoring, MainView.Dependencies & MovieSe
     fileprivate let _storage = LazyStorage()
     private let cache = CachePersistence(.withMaxSize(78600000)) // Set a max cache size of 75MB
 
-    let selectedMovie = SelectedMovieSource().eraseToSource()
+    let selectedMovie = SelectedMovieSource().eraseToAnySource()
 
-    private func image(from url: URL) -> Source<Fetchable<UIImage>> {
+    private func image(from url: URL) -> AnySource<Fetchable<UIImage>> {
         API.image(from: url)
     }
 
-    func movieThumbnail(from url: URL) -> Source<Fetchable<UIImage>> {
+    func movieThumbnail(from url: URL) -> AnySource<Fetchable<UIImage>> {
         let descriptor = CacheDescriptor(key: url.absoluteString)
         return image(from: url).persisted(using: cache.persistableSource(for: descriptor))
     }
 
-    func moviePoster(from url: URL) -> Source<Fetchable<UIImage>> {
+    func moviePoster(from url: URL) -> AnySource<Fetchable<UIImage>> {
         let descriptor = CacheDescriptor(key: url.absoluteString)
         return image(from: url).persisted(using: cache.persistableSource(for: descriptor))
     }
 
-    func movieSearchResponse(for searchTerm: String, page: Int?) -> Source<Fetchable<MovieSearchResponse>> {
+    func movieSearchResponse(for searchTerm: String, page: Int?) -> AnySource<Fetchable<MovieSearchResponse>> {
         API.movieSearch(for: searchTerm, page: page)
     }
 
-    func movieDetails(for movieID: Int) -> Source<Fetchable<MovieDetailsResponse>> {
+    func movieDetails(for movieID: Int) -> AnySource<Fetchable<MovieDetailsResponse>> {
         return API.movieDetails(for: movieID )
     }
 
-    func movieCredits(for movieID: Int) -> Source<Fetchable<MovieCreditsResponse>> {
+    func movieCredits(for movieID: Int) -> AnySource<Fetchable<MovieCreditsResponse>> {
         return API.movieCredits(for: movieID)
     }
 
-    var movieSearchSource: Source<Fetchable<MovieSearch>> {
-        lazy { MovieSearchSource(dependencies: self).eraseToSource() }
+    var movieSearchSource: AnySource<Fetchable<MovieSearch>> {
+        lazy { MovieSearchSource(dependencies: self).eraseToAnySource() }
     }
 
-    var movieDetailsSource: Source<Fetchable<MovieDetails>> {
-         MovieDetailsSource(dependencies: self).eraseToSource()
+    var movieDetailsSource: AnySource<Fetchable<MovieDetails>> {
+         MovieDetailsSource(dependencies: self).eraseToAnySource()
     }
 }
 

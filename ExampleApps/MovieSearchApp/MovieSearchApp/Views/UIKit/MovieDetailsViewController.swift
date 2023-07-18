@@ -46,12 +46,11 @@ final class MovieDetailsViewController: UIViewController, Renderer {
     @IBOutlet private var errorMessage: UILabel!
     @IBOutlet private var retryButton: UIButton!
 
-    @Source var model: Fetchable<MovieDetails>
-    @Source var fetchablePoster: FetchableWithPlaceholder<UIImage, UIImage>?
+    @Sourced var model: Fetchable<MovieDetails>
+    @Sourced() var fetchablePoster: FetchableWithPlaceholder<UIImage, UIImage>?
 
-    init?(source: Source<Fetchable<MovieDetails>>, coder: NSCoder) {
-        _model = source
-        _fetchablePoster = .init(model: nil)
+    init?(source: AnySource<Fetchable<MovieDetails>>, coder: NSCoder) {
+        _model = .init(from: source)
         super.init(coder: coder)
     }
 
@@ -75,18 +74,18 @@ final class MovieDetailsViewController: UIViewController, Renderer {
             errorMessage.text = failure.error.localizedDescription
             retryButton.isHidden = failure.retry == nil
         case .fetched(let fetched):
-            _fetchablePoster = fetched.poster.optional()
-            title = fetched.title
+            _fetchablePoster.setSource(fetched.value.poster)
+            title = fetched.value.title
             poster.image = fetchablePoster?.fetched?.value ?? fetchablePoster?.placeholder
-            movieTitle.text = fetched.title
-            tagline.text = fetched.tagline
-            rating.text = fetched.rating
-            releaseDate.text = fetched.releaseDate
-            director.text = fetched.director
-            topCast.text = fetched.topCast.joined(separator: ", ")
-            budget.text = fetched.budget
-            boxOffice.text = fetched.boxOffice
-            movieDescription.text = fetched.description
+            movieTitle.text = fetched.value.title
+            tagline.text = fetched.value.tagline
+            rating.text = fetched.value.rating
+            releaseDate.text = fetched.value.releaseDate
+            director.text = fetched.value.director
+            topCast.text = fetched.value.topCast.joined(separator: ", ")
+            budget.text = fetched.value.budget
+            boxOffice.text = fetched.value.boxOffice
+            movieDescription.text = fetched.value.description
             view.setNeedsLayout()
             view.layoutIfNeeded()
         }

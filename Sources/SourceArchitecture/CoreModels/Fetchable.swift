@@ -1,8 +1,7 @@
 //
-//  Fetchable.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -47,32 +46,18 @@ public enum Fetchable<Value> {
     }
 
     public struct Fetching {
-        public let progress: Source<Progress>?
-        public init(progress: Source<Progress>?) {
+        public let progress: AnySource<Progress>?
+        public init(progress: AnySource<Progress>?) {
             self.progress = progress
         }
     }
 
-    @dynamicMemberLookup
     public struct Fetched {
         public let refresh: Action<Void>?
         public var value: Value
         public init(value: Value, refresh: Action<Void>?) {
             self.value = value
             self.refresh = refresh
-        }
-
-        public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-            value[keyPath: keyPath]
-        }
-
-        public subscript<T>(dynamicMember keyPath: WritableKeyPath<Value, T>) -> T {
-            get { value[keyPath: keyPath] }
-            set { value[keyPath: keyPath] = newValue }
-        }
-
-        public subscript<T, V>(dynamicMember keyPath: KeyPath<V, T>) -> T? where Value == Optional<V> {
-            value?[keyPath: keyPath]
         }
     }
 
@@ -132,9 +117,10 @@ extension Fetchable: FetchableRepresentable {
     public func asFetchable() -> Fetchable<Value> { self }
 }
 
-public extension Source where Model: FetchableRepresentable {
+public extension AnySource where Model: FetchableRepresentable {
     // Disfavored overload because if the Model is also FetchableWithPlaceholderRepresentable, we want to prefer that version of mapFetchedValue to preserve the more complete type
-    @_disfavoredOverload func mapFetchedValue<NewValue>(_ transform: @escaping (Model.Value) -> NewValue) -> Source<Fetchable<NewValue>> {
+    @_disfavoredOverload
+    func mapFetchedValue<NewValue>(_ transform: @escaping (Model.Value) -> NewValue) -> AnySource<Fetchable<NewValue>> {
         map { $0.asFetchable().map(transform) }
     }
 }

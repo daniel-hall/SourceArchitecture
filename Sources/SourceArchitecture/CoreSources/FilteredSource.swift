@@ -1,8 +1,7 @@
 //
-//  FilteredSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,31 +26,28 @@ import Foundation
 
 
 /// A Source that filters upstream values using the provided closure.
-private final class FilteredSource<Model>: SourceOf<Model> {
+private final class FilteredSource<Model>: Source<Model> {
 
-    @Source var input: Model
+    @Sourced var input: Model
 
     let shouldInclude: (Model) -> Bool
 
-    lazy var initialModel: Model = {
-        _input.subscribe(self, method: FilteredSource.update, sendInitialModel: false)
-        return input
-    }()
+    lazy var initialState: Model = input
 
-    init(inputSource: Source<Model>, shouldInclude: @escaping (Model) -> Bool) {
-        _input = inputSource
+    init(inputSource: AnySource<Model>, shouldInclude: @escaping (Model) -> Bool) {
+        _input = .init(from: inputSource, updating: FilteredSource.update)
         self.shouldInclude = shouldInclude
     }
     
     func update(value: Model) {
         if shouldInclude(value) {
-            model = value
+            state = value
         }
     }
 }
 
-public extension Source {
-    func filtering(using shouldInclude: @escaping (Model) -> Bool) -> Source<Model> {
-        FilteredSource(inputSource: self, shouldInclude: shouldInclude).eraseToSource()
+public extension AnySource {
+    func filtering(using shouldInclude: @escaping (Model) -> Bool) -> AnySource<Model> {
+        FilteredSource(inputSource: self, shouldInclude: shouldInclude).eraseToAnySource()
     }
 }

@@ -31,9 +31,9 @@ import SourceArchitecture
 
 /// A Source that keeps track of the current selected movie ID, allows a new selected ID to be set, and informs all subscribers of changes whenever the selected ID changes.
 final class SelectedMovieSource: ComposedSource<Mutable<Int?>> {
-    init() { super.init { MutableSource(nil).eraseToSource() } }
+    init() { super.init { MutableSource(nil).eraseToAnySource() } }
 }
 
 protocol SelectedMovieDependency {
-    var selectedMovie: Source<Mutable<Int?>> { get }
+    var selectedMovie: AnySource<Mutable<Int?>> { get }
 }

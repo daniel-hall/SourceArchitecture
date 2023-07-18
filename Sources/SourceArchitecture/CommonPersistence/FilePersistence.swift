@@ -1,8 +1,7 @@
 //
-//  FilePersistence.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +32,8 @@ public class FilePersistence {
 
     public init() { }
 
-    public func persistableSource<Value>(for descriptor: FileDescriptor<Value>) -> Source<Persistable<Value>> {
-        dictionary[descriptor.url.absoluteString] { FilePersistenceSource(descriptor: descriptor).eraseToSource() }
+    public func persistableSource<Value>(for descriptor: FileDescriptor<Value>) -> AnySource<Persistable<Value>> {
+        dictionary[descriptor.url.absoluteString] { FilePersistenceSource(descriptor: descriptor).eraseToAnySource() }
     }
 }
 
@@ -85,16 +84,16 @@ public extension FileDescriptor where Value: DataConvertible {
     }
 }
 
-private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
+private final class FilePersistenceSource<Value>: Source<Persistable<Value>> {
 
     @ActionFromMethod(set) private var setAction
     @ActionFromMethod(clear) private var clearAction
-    @Threadsafe private var expiredWorkItem: DispatchWorkItem?
-    @Threadsafe private var saveWorkItem: DispatchWorkItem?
-    @Threadsafe private var saveDate: Date = Date()
-    @Threadsafe private var expirationDate: Date?
+    private var expiredWorkItem: DispatchWorkItem?
+    private var saveWorkItem: DispatchWorkItem?
+    private var saveDate: Date = Date()
+    private var expirationDate: Date?
     private var isExpired: Bool { (expirationDate ?? .distantFuture) <= Date() }
-    fileprivate lazy var initialModel = Persistable<Value>.notFound(.init(set: setAction))
+    fileprivate lazy var initialState = Persistable<Value>.notFound(.init(set: setAction))
     private let descriptor: FileDescriptor<Value>
 
     fileprivate init(descriptor: FileDescriptor<Value>) {
@@ -112,17 +111,17 @@ private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
                     let workItem = DispatchWorkItem {
                         [weak self] in
                         guard let self = self else { return }
-                        if case .found(let found) = self.model, self.isExpired {
-                            self.model = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
+                        if case .found(let found) = self.state, self.isExpired {
+                            self.state = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
                         }
                     }
                     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + refreshTime, execute: workItem)
                     expiredWorkItem = workItem
                 }
             }
-            model = (.found(.init(value: data, isExpired: isExpired, set: setAction, clear: clearAction)))
+            state = (.found(.init(value: data, isExpired: isExpired, set: setAction, clear: clearAction)))
         } catch {
-            model = .notFound(.init(error: error, set: setAction))
+            state = .notFound(.init(error: error, set: setAction))
         }
     }
 
@@ -136,14 +135,14 @@ private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
             // If an expiration date is set, schedule an update at that time so that downstream subscribers are updated
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
-                if case .found(let found) = self.model, self.isExpired {
-                    self.model = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
+                if case .found(let found) = self.state, self.isExpired {
+                    self.state = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
                 }
             }
             DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + expireAfter, execute: workItem)
             expiredWorkItem = workItem
         }
-        self.model = .found(.init(value: value, isExpired: isExpired, set: setAction, clear: clearAction))
+        self.state = .found(.init(value: value, isExpired: isExpired, set: setAction, clear: clearAction))
 
         saveWorkItem?.cancel()
         saveWorkItem = nil
@@ -158,20 +157,20 @@ private final class FilePersistenceSource<Value>: SourceOf<Persistable<Value>> {
                     attributes[FileAttributeKey.modificationDate] = saveDate
                     try? FileManager.default.setAttributes(attributes, ofItemAtPath: self.descriptor.url.path)
                 } catch {
-                    self.model = .notFound(.init(error: error, set: self.setAction))
+                    self.state = .notFound(.init(error: error, set: self.setAction))
                 }
             }
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.3, execute: saveWorkItem)
             self.saveWorkItem = saveWorkItem
         } catch {
-            self.model = .notFound(.init(error: error, set: setAction))
+            self.state = .notFound(.init(error: error, set: setAction))
         }
     }
 
     private func clear() {
         expiredWorkItem?.cancel()
         saveWorkItem?.cancel()
-        model = .notFound(.init(set: setAction))
+        state = .notFound(.init(set: setAction))
         try? FileManager.default.removeItem(at: descriptor.url)
     }
 }

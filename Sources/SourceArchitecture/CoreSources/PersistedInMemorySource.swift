@@ -1,8 +1,7 @@
 //
-//  PersistedInMemorySource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,23 +26,26 @@ import Foundation
 
 
 /// A Source that holds a value in memory and allows it to be written to, read from, and cleared
-public final class PersistedInMemorySource<Value>: SourceOf<Persistable<Value>> {
+public final class PersistedInMemorySource<Value>: Source<Persistable<Value>> {
     @ActionFromMethod(set) var setAction
     @ActionFromMethod(clear) var clearAction
 
     private let initialValue: Value?
-    public lazy var initialModel: Persistable<Value> = initialValue.map { .found(.init(value: $0, isExpired: false, set: setAction, clear: clearAction)) } ?? .notFound(.init(set: setAction))
+    private let isExpired: Bool
 
-    public init(persistedValue: Value?) {
+    public lazy var initialState: Persistable<Value> = initialValue.map { .found(.init(value: $0, isExpired: isExpired, set: setAction, clear: clearAction)) } ?? .notFound(.init(set: setAction))
+
+    public init(persistedValue: Value?, isExpired: Bool = false) {
         self.initialValue = persistedValue
+        self.isExpired = isExpired
         super.init()
     }
 
     private func set(_ value: Value) {
-        model = .found(.init(value: value, isExpired: false, set: setAction, clear: clearAction))
+        state = .found(.init(value: value, isExpired: false, set: setAction, clear: clearAction))
     }
 
     private func clear() {
-        model = .notFound(.init(set: setAction))
+        state = .notFound(.init(set: setAction))
     }
 }

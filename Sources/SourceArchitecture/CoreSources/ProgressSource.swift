@@ -1,8 +1,7 @@
 //
-//  ProgressSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -28,15 +27,15 @@ import Combine
 
 
 /// A Source that takes in an iOS Progress object, and then translates it to a simple Progress struct which can be monitored by observers
-private final class _ProgressSource: SourceOf<Progress> {
+private final class _ProgressSource: Source<Progress> {
     
-    let initialModel: Progress
+    let initialState: Progress
     let progress: Foundation.Progress
-    var subscription: AnyObject?
+    @Threadsafe var subscription: AnyObject?
     
     init(progress: Foundation.Progress) {
         self.progress = progress
-        initialModel = .init(totalUnits: Int(progress.totalUnitCount), completedUnits: Int(progress.completedUnitCount), fractionCompleted: Float(progress.fractionCompleted), estimatedTimeRemaining: progress.estimatedTimeRemaining)
+        initialState = .init(totalUnits: Int(progress.totalUnitCount), completedUnits: Int(progress.completedUnitCount), fractionCompleted: Float(progress.fractionCompleted), estimatedTimeRemaining: progress.estimatedTimeRemaining)
         super.init()
         subscription = progress.observe(\.fractionCompleted) { [weak self] progress, _ in
             self?.update(progress)
@@ -44,7 +43,7 @@ private final class _ProgressSource: SourceOf<Progress> {
     }
     
     func update(_ progress: Foundation.Progress) {
-        model = .init(totalUnits: Int(progress.totalUnitCount), completedUnits: Int(progress.completedUnitCount), fractionCompleted: Float(progress.fractionCompleted), estimatedTimeRemaining: progress.estimatedTimeRemaining)
+        state = .init(totalUnits: Int(progress.totalUnitCount), completedUnits: Int(progress.completedUnitCount), fractionCompleted: Float(progress.fractionCompleted), estimatedTimeRemaining: progress.estimatedTimeRemaining)
         if progress.fractionCompleted >= 1.0 {
             subscription = nil
         }
@@ -54,6 +53,6 @@ private final class _ProgressSource: SourceOf<Progress> {
 /// A Source that takes in an iOS / Foundation Progress object, and then translates it to a stream of simple Progress struct values which can be monitored by subscribers
 public final class ProgressSource: ComposedSource<Progress> {
     public init(_ progress: Foundation.Progress) {
-        super.init { _ProgressSource(progress: progress).eraseToSource() }
+        super.init { _ProgressSource(progress: progress).eraseToAnySource() }
     }
 }

@@ -25,30 +25,9 @@
 import Foundation
 
 
-private final class _MutableSource<Model>: Source<Mutable<Model>> {
-
-    @ActionFromMethod(set) var setAction
-
-    let initialValue: Model
-    lazy var initialState = Mutable(value: initialValue, set: setAction)
-
-    public init(_ initialValue: Model) {
-        self.initialValue = initialValue
-    }
-
-    private func set(_ value: Model) {
-        state = .init(value: value, set: setAction)
-    }
-}
-
-public final class MutableSource<Model>: ComposedSource<Mutable<Model>> {
-    public init(_ initialValue: Model) {
-        super.init{ _MutableSource(initialValue).eraseToAnySource() }
-    }
-}
-
-public extension AnySource where Model: MutableRepresentable {
-    func nonmutating() -> AnySource<Model.Value> {
-        map { $0.asMutable().value }
+public final class SingleValueSource<T>: Source<T> {
+    public let initialState: T
+    public init(_ value: T) {
+        initialState = value
     }
 }

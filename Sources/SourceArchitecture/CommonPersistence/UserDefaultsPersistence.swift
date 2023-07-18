@@ -1,8 +1,7 @@
 //
-//  UserDefaultsPersistence.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +32,8 @@ public class UserDefaultsPersistence {
 
     public init() { }
 
-    public func persistableSource<Value>(for descriptor: UserDefaultsDescriptor<Value>) -> Source<Persistable<Value>> {
-        dictionary[descriptor.key] { UserDefaultsSource(descriptor: descriptor).eraseToSource() }
+    public func persistableSource<Value>(for descriptor: UserDefaultsDescriptor<Value>) -> AnySource<Persistable<Value>> {
+        dictionary[descriptor.key] { UserDefaultsSource(descriptor: descriptor).eraseToAnySource() }
     }
 }
 
@@ -83,15 +82,15 @@ private struct UserDefaultsRecord: Codable {
     let data: Data
 }
 
-private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
+private final class UserDefaultsSource<Value>: Source<Persistable<Value>> {
 
     @ActionFromMethod(set) private var setAction
     @ActionFromMethod(clear) private var clearAction
-    @Threadsafe private var expiredWorkItem: DispatchWorkItem?
-    @Threadsafe private var expirationDate: Date?
+    private var expiredWorkItem: DispatchWorkItem?
+    private var expirationDate: Date?
     private var isExpired: Bool { (self.expirationDate ?? .distantFuture) <= Date()  }
 
-    fileprivate lazy var initialModel = Persistable<Value>.notFound(.init(set: setAction))
+    fileprivate lazy var initialState = Persistable<Value>.notFound(.init(set: setAction))
     private let descriptor: UserDefaultsDescriptor<Value>
 
     fileprivate init(descriptor: UserDefaultsDescriptor<Value>) {
@@ -108,8 +107,8 @@ private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
                         let workItem = DispatchWorkItem { [weak self] in
 
                             guard let self = self else { return }
-                            if case .found(let found) = self.model, self.isExpired {
-                                self.model = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
+                            if case .found(let found) = self.state, self.isExpired {
+                                self.state = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
                             }
                         }
                         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + refreshTime, execute: workItem)
@@ -117,12 +116,12 @@ private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
                     }
                 }
                 let value = try descriptor.decode(record.data)
-                model = .found(.init(value: value, isExpired: isExpired, set: setAction, clear: clearAction))
+                state = .found(.init(value: value, isExpired: isExpired, set: setAction, clear: clearAction))
             } catch {
-                model = .notFound(.init(error: error, set: setAction))
+                state = .notFound(.init(error: error, set: setAction))
             }
         } else {
-            model = .notFound(.init(set: setAction))
+            state = .notFound(.init(set: setAction))
         }
     }
 
@@ -138,22 +137,22 @@ private final class UserDefaultsSource<Value>: SourceOf<Persistable<Value>> {
                 // If an expiration date is set, schedule an update at that time so that downstream subscribers are updated
                 let workItem = DispatchWorkItem { [weak self] in
                     guard let self = self else { return }
-                    if case .found(let found) = self.model, self.isExpired {
-                        self.model = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
+                    if case .found(let found) = self.state, self.isExpired {
+                        self.state = .found(.init(value: found.value, isExpired: true, set: found.set, clear: found.clear))
                     }
                 }
                 DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + expireAfter, execute: workItem)
                 expiredWorkItem = workItem
             }
-            model = .found(.init(value: value, isExpired: isExpired, set: setAction, clear: clearAction))
+            state = .found(.init(value: value, isExpired: isExpired, set: setAction, clear: clearAction))
         } catch {
-            model = .notFound(.init(error: error, set: setAction))
+            state = .notFound(.init(error: error, set: setAction))
         }
     }
 
     private func clear() {
         expiredWorkItem?.cancel()
         UserDefaults.standard.removeObject(forKey: descriptor.key)
-        model = .notFound(.init(set: setAction))
+        state = .notFound(.init(set: setAction))
     }
 }

@@ -31,9 +31,9 @@ import ToDoList
 
 class MainHostingController: UIHostingController<ToDoListView> {
     required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+        super.init(coder: aDecoder, rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToAnySource()))
     }
     init() {
-        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToSource()))
+        super.init(rootView: ToDoListView(source: ToDoListSource(dependencies: appDependencies).eraseToAnySource()))
     }
 }

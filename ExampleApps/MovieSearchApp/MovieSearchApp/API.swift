@@ -31,24 +31,24 @@ import SourceArchitecture
 /// A type that defines all the different API calls and responses that can be made by the MovieSearch app
 enum API {
 
-    static func movieSearch(for searchTerm: String, page: Int?) -> Source<Fetchable<MovieSearchResponse>> {
+    static func movieSearch(for searchTerm: String, page: Int?) -> AnySource<Fetchable<MovieSearchResponse>> {
         let urlRequest = URLRequest(url: .init(string: "https://api.themoviedb.org/3/search/movie?api_key=e599956308c0060d33c166d0e5914c16&language=en-US&query=\(searchTerm.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? searchTerm)&page=\(page ?? 1)")!)
-        return FetchableDataSource(urlRequest: urlRequest).eraseToSource().jsonDecoded()
+        return FetchableDataSource(urlRequest: urlRequest).eraseToAnySource().jsonDecoded()
     }
 
-    static func movieDetails(for movieID: Int) -> Source<Fetchable<MovieDetailsResponse>> {
+    static func movieDetails(for movieID: Int) -> AnySource<Fetchable<MovieDetailsResponse>> {
         let urlRequest = URLRequest(url: .init(string: "https://api.themoviedb.org/3/movie/\(movieID)?api_key=e599956308c0060d33c166d0e5914c16&language=en-US")!)
-        return FetchableDataSource(urlRequest: urlRequest).eraseToSource().jsonDecoded()
+        return FetchableDataSource(urlRequest: urlRequest).eraseToAnySource().jsonDecoded()
     }
 
-    static func movieCredits(for movieID: Int) -> Source<Fetchable<MovieCreditsResponse>> {
+    static func movieCredits(for movieID: Int) -> AnySource<Fetchable<MovieCreditsResponse>> {
         let urlRequest = URLRequest(url: .init(string: "https://api.themoviedb.org/3/movie/\(movieID)/credits?api_key=e599956308c0060d33c166d0e5914c16&language=en-US")!)
-        return FetchableDataSource(urlRequest: urlRequest).eraseToSource().jsonDecoded()
+        return FetchableDataSource(urlRequest: urlRequest).eraseToAnySource().jsonDecoded()
     }
 
-    static func image(from url: URL) -> Source<Fetchable<UIImage>> {
+    static func image(from url: URL) -> AnySource<Fetchable<UIImage>> {
         let urlRequest = URLRequest(url: url)
-        return FetchableDataSource(urlRequest: urlRequest).eraseToSource().decoded {
+        return FetchableDataSource(urlRequest: urlRequest).eraseToAnySource().decoded {
             guard let image = UIImage(data: $0) else {
                 throw NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "Could decode UIImage from data"])
             }

@@ -29,7 +29,7 @@ import SourceArchitecture
 
 // We declare a protocol for the MovieSearchView's Source Dependency. Having a protocol like this allows us to create a top-level container that holds all dependencies for the view hierarchy (and makes them mockable / injectable) while being compiler checked
 protocol FetchableMovieSearchSourceDependency {
-    var movieSearchSource: Source<Fetchable<MovieSearch>> { get }
+    var movieSearchSource: AnySource<Fetchable<MovieSearch>> { get }
 }
 
 // Source Architecture Views / Renderers must declare a source property to hold a Source of the Model that they use. The Source type implements ObservableObject and when its value changes, the View will automatically recalculate its body based on the new model value.
@@ -37,14 +37,14 @@ struct MovieSearchView: View, Renderer {
     // This view depends on its own Source dependency, plus the Dependencies of any children is must create
     typealias Dependencies = FetchableMovieSearchSourceDependency & MovieDetailsView.Dependencies
 
-    @Source var model: Fetchable<MovieSearch>
+    @Sourced var model: Fetchable<MovieSearch>
 
     @State private var searchText = ""
     private let dependencies: Dependencies
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
-        _model = dependencies.movieSearchSource
+        _model = .init(from: dependencies.movieSearchSource)
     }
     var body: some View {
         VStack {
@@ -55,18 +55,19 @@ struct MovieSearchView: View, Renderer {
                 Text(failure.error.localizedDescription)
                 failure.retry.map { retry in Button("Retry", action: { retry() }) }
             case .fetched(let fetched):
-                IsSearchingResponder { if !$0 { fetched.search(nil) } }
-                if fetched.results.isEmpty {
+                IsSearchingResponder { if !$0 { fetched.value.search(nil) } }
+                if fetched.value.results.isEmpty {
                     Text("No Results").foregroundColor(.gray)
                 } else {
-                    List(fetched.results) { result in
+                    List(fetched.value.results) { result in
                         var selectOnce = Optional(result.select)
                         HStack(spacing: 0) {
                             MovieSearchResultView(result: result).onAppear {
                                 // If this result is the tenth from the last result currently loaded, try to load more
-                                if result.id == fetched.results.suffix(10).first?.id {
-                                    fetched.loadMore?()
+                                if result.id == fetched.value.results.suffix(10).first?.id {
+                                    fetched.value.loadMore?()
                                 }
+                                selectOnce = Optional(result.select)
                             }
                             NavigationLink("") {
                                 MovieDetailsView(dependencies: dependencies)
@@ -89,10 +90,10 @@ struct MovieSearchView: View, Renderer {
         .navigationTitle("Movies — SwiftUI")
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
         .onSubmit(of: .search) {
-            model.fetched?.search(searchText)
+            model.fetched?.value.search(searchText)
         }
         .onAppear {
-            searchText = model.fetched?.currentSearchTerm ?? ""
+            searchText = model.fetched?.value.currentSearchTerm ?? ""
         }
     }
 }
@@ -109,12 +110,12 @@ struct IsSearchingResponder: View {
 
 struct MovieSearchResultView: View, Renderer {
     
-    @Source var model: FetchableWithPlaceholder<UIImage, UIImage>
+    @Sourced var model: FetchableWithPlaceholder<UIImage, UIImage>
     private let result: MovieSearch.Result
 
     init(result: MovieSearch.Result) {
         self.result = result
-        _model = result.thumbnail
+        _model = .init(from: result.thumbnail)
     }
 
     var body: some View {

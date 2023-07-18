@@ -30,7 +30,7 @@ import SwiftUI
 
 // We declare a protocol for the MovieDetailView's Source Dependency. Having a protocol like this allows us to create a top-level container that holds all dependencies for the view hierarchy (and makes them mockable / injectable) while being compiler checked
 protocol FetchableMovieDetailsSourceDependency {
-    var movieDetailsSource: Source<Fetchable<MovieDetails>> { get }
+    var movieDetailsSource: AnySource<Fetchable<MovieDetails>> { get }
 }
 
 // Source Architecture Views / Renderers must declare a source property to hold a Source of the Model that they use. The Source type implements ObservableObject and when its value changes, the View will automatically recalculate its body based on the new model value.
@@ -38,14 +38,14 @@ struct MovieDetailsView: View, Renderer {
 
     typealias Dependencies = FetchableMovieDetailsSourceDependency
 
-    @Source var model: Fetchable<MovieDetails>
+    @Sourced var model: Fetchable<MovieDetails>
 
     init(dependencies: Dependencies) {
-        _model = dependencies.movieDetailsSource
+        _model = .init(from: dependencies.movieDetailsSource)
     }
 
     var body: some View {
-        Group {
+        ZStack {
             switch model {
             case .fetching:
                 ProgressView()
@@ -55,18 +55,18 @@ struct MovieDetailsView: View, Renderer {
             case .fetched(let fetched):
                 ScrollView {
                     VStack(alignment: .center, spacing: 12) {
-                        PosterView(source: fetched.poster).aspectRatio(contentMode: .fit).frame(width: 200, height: 300)
+                        PosterView(source: fetched.value.poster).aspectRatio(contentMode: .fit).frame(width: 200, height: 300)
                         VStack(spacing: 5) {
-                            Text(fetched.title).font(.title2)
-                            if let tagline = fetched.tagline {
+                            Text(fetched.value.title).font(.title2)
+                            if let tagline = fetched.value.tagline {
                                 Text(tagline).font(.subheadline)
                             }
                             HStack(spacing: 12) {
-                                Text(fetched.rating)
+                                Text(fetched.value.rating)
                                 Text("|")
                                 HStack {
                                     Text("Released:").font(.caption).fontWeight(.bold)
-                                    Text(fetched.releaseDate).font(.caption)
+                                    Text(fetched.value.releaseDate).font(.caption)
                                 }
                             }
                         }
@@ -76,13 +76,13 @@ struct MovieDetailsView: View, Renderer {
                                     Text("Director:")
                                         .fontWeight(.bold)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(fetched.director)
+                                    Text(fetched.value.director)
                                 }
                                 VStack (alignment: .leading) {
                                     Text("Top Cast:")
                                         .fontWeight(.bold)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(fetched.topCast.joined(separator: ", "))
+                                    Text(fetched.value.topCast.joined(separator: ", "))
                                 }
                             }
                             HStack {
@@ -90,19 +90,19 @@ struct MovieDetailsView: View, Renderer {
                                     Text("Budget:")
                                         .fontWeight(.bold)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(fetched.budget)
+                                    Text(fetched.value.budget)
                                 }
                                 VStack(alignment: .leading) {
                                     Text("Box Office:")
                                         .fontWeight(.bold)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(fetched.boxOffice)
+                                    Text(fetched.value.boxOffice)
                                 }
                             }
                         }
                         Spacer()
-                        Text(fetched.description)
-                            .navigationTitle(fetched.title)
+                        Text(fetched.value.description)
+                            .navigationTitle(fetched.value.title)
                             .navigationBarTitleDisplayMode(.inline)
                     }.padding()
                 }
@@ -113,10 +113,10 @@ struct MovieDetailsView: View, Renderer {
 
 struct PosterView: View, Renderer {
 
-    @Source var model: FetchableWithPlaceholder<UIImage, UIImage>
+    @Sourced var model: FetchableWithPlaceholder<UIImage, UIImage>
 
-    init(source: Source<FetchableWithPlaceholder<UIImage, UIImage>>) {
-        _model = source
+    init(source: AnySource<FetchableWithPlaceholder<UIImage, UIImage>>) {
+        _model = .init(from: source)
     }
 
     var body: some View {

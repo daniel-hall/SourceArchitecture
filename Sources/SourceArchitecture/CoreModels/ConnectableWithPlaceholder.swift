@@ -1,8 +1,7 @@
 //
-//  ConnectableWithPlaceholder.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +30,6 @@ public enum ConnectableWithPlaceholder<Value, Placeholder> {
     case connected(Connected)
     case disconnected(Disconnected)
 
-    @dynamicMemberLookup
     public struct Connected {
         public let disconnect: Action<Void>
         public let value: Value
@@ -41,14 +39,6 @@ public enum ConnectableWithPlaceholder<Value, Placeholder> {
             self.value = value
             self.disconnect = disconnect
             self.placeholder = placeholder
-        }
-
-        public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-            value[keyPath: keyPath]
-        }
-
-        public subscript<T, V>(dynamicMember keyPath: KeyPath<V, T>) -> T? where Value == Optional<V> {
-            value?[keyPath: keyPath]
         }
     }
 
@@ -164,18 +154,18 @@ extension ConnectableWithPlaceholder: Equatable where Value: Equatable {
     }
 }
 
-public extension Source where Model: ConnectableRepresentable {
-    func addingPlaceholder<T>(_ placeholder: T) -> Source<ConnectableWithPlaceholder<Model.Value, T>> {
+public extension AnySource where Model: ConnectableRepresentable {
+    func addingPlaceholder<T>(_ placeholder: T) -> AnySource<ConnectableWithPlaceholder<Model.Value, T>> {
         map { $0.asConnectable().addingPlaceholder(placeholder)}
     }
 }
 
-public extension Source where Model: ConnectableWithPlaceholderRepresentable {
-    func mapConnectedValue<NewValue>(_ transform: @escaping (Model.Value) -> (NewValue)) -> Source<ConnectableWithPlaceholder<NewValue, Model.Placeholder>> {
+public extension AnySource where Model: ConnectableWithPlaceholderRepresentable {
+    func mapConnectedValue<NewValue>(_ transform: @escaping (Model.Value) -> (NewValue)) -> AnySource<ConnectableWithPlaceholder<NewValue, Model.Placeholder>> {
         map { $0.asConnectableWithPlaceholder().map(transform) }
     }
 
-    func mapConnectablePlaceholder<NewPlaceholder>(_ transform: @escaping (Model.Placeholder) -> (NewPlaceholder)) -> Source<ConnectableWithPlaceholder<Model.Value, NewPlaceholder>> {
+    func mapConnectablePlaceholder<NewPlaceholder>(_ transform: @escaping (Model.Placeholder) -> (NewPlaceholder)) -> AnySource<ConnectableWithPlaceholder<Model.Value, NewPlaceholder>> {
         map { $0.asConnectableWithPlaceholder().mapPlaceholder(transform)}
     }
 }

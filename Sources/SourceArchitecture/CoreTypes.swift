@@ -1,8 +1,7 @@
 //
-//  CoreTypes.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -28,132 +27,308 @@ import Combine
 import SwiftUI
 
 
-// MARK: - Source Type & Extensions -
+// MARK: - Source Types and Protocols -
 
 /// A Source is a special kind of publisher that guarantees certain important properties:
-///  - A Source always contains a current value of its Model (unlike Publishers in Combine)
-///  - A Source has no external API for mutating its contents (unlike CurrentValueSubjec in Combine)
+///  - A Source always contains a current state of its Model (unlike Publishers in Combine)
+///  - A Source has no external API for mutating its contents (unlike CurrentValueSubject in Combine)
 ///  - A Source is a reference type (class) which means that it is never copied and all subscribers always get the exact same values, never a new series of values. This is important since a Source is a _single source of current truth_
 ///  - A Source automatically triggers an update on any Renderer (SwiftUI Views, UIKit ViewControllers and UIViews, etc.) when the Source's model value changes.
-///  - A Source allows other Sources to subscribe to updated values without closures, to prevent accidental capture of values or needing to manage subscription tokens (AnyCancellables in Combine).
-@propertyWrapper
-public struct Source<Model>: DynamicProperty {
-    public typealias Model = Model
-    @ObservedObject private var source: ObservableSource<Model>
+///  - A Source is connected directly to a method using the @Sourced property wrapper. No closures are involved in subscriptions, which prevents accidental retain cycles
+///
+/// This typealias is used to create new Sources, which must both subclass `_Source<Model>` and conform to `_SourceProtocol`. This typealias allows new Sources to do both with a single supertype, e.g. `class MySource: Source<String>`
+public typealias Source<Model> = SourceArchitecture.Source<Model> & SourceProtocol
 
-    public var model: Model { wrappedValue }
-    public var wrappedValue: Model {
-        get { source.model }
-        @available(*, unavailable) nonmutating set {}
+public protocol SourceProtocol: AnyObject {
+    associatedtype Model
+    typealias Sourced<T> = SourceArchitecture.Sourced<Self, T>
+    var initialState: Model { get }
+    /// An optional method that can be implemented to run some behavior the first time this Source's state is accessed
+    func onStart()
+}
+
+public extension SourceProtocol {
+    func onStart() {
+        // No-op by default
     }
 
-    // This implementation "hooks" into whenever a UIKit Renderer (UIViewController, UIView, etc.) that contains this property accesses the property — i.e. calls `self.model` — and automatically subscribes the Renderer to model updates if the Renderer isn't already subscribed. This makes UIKit Renderers work more like SwiftUI: no need to explicity subscribe to model updates. Just have the @Soure property and updates will happen automatically
-    public static subscript<T: AnyObject>(_enclosingInstance instance: T,
-                                          wrapped wrappedKeyPath: KeyPath<T, Model>, storage storageKeyPath: KeyPath<T, Source<Model>>
-    ) -> Model {
+    /// The current model value for this Source. This default implementation of the `model` property uses locking for thread safety and automatically publishes new values to subscribers.
+    var state: Model {
         get {
-            /// If the type containing this Source is a Renderer (and a class type), then subscribe its `render()` method to updates if it isn't already subscribed
-            if instance is any Renderer {
-                instance[keyPath: storageKeyPath].source.subscribe(sendInitialModel: false, subscriber: instance) { [weak instance] _ in
-                    if Thread.isMainThread {
-                        (instance as? any Renderer)?.render()
-                    } else {
-                        DispatchQueue.main.async { (instance as? any Renderer)?.render() }
+            guard let source = (self as? SourceArchitecture.Source<Model>) else {
+                return initialState
+            }
+            // If our state has already been initialized previously, return it immediately
+            if let state = source.observable.state {
+                return state
+            }
+            // Otherwise, create initial state and run first-time access behaviors
+            let state = initialState
+            (self as? any (SourceProtocol & DecodableActionSource))?.setSourceOn(state: state)
+            source.observable.state = state
+            // Set this Source as the parent of any @Sourced properties
+            Mirror(reflecting: self).children.forEach {
+                if $0.label?.hasPrefix("_") == true {
+                    ($0.value as? any Parentable)?.setParent(self)
+                }
+            }
+            self.onStart()
+            return state
+        }
+        set {
+            let state = newValue
+            (self as? any (SourceProtocol & DecodableActionSource))?.setSourceOn(state: state)
+            (self as? SourceArchitecture.Source<Model>)?.observable.state = state
+        }
+    }
+
+    /// Create a type-erased Source of the Model type from this implementation, which can be used by Renderers or subscribed to by other Sources.
+    func eraseToAnySource<T>() -> AnySource<T> where Model == T, Self: Source<Model> {
+        AnySource(self)
+    }
+}
+
+fileprivate extension SourceProtocol {
+
+    func hasCurrentAction(identifier: String) -> Bool {
+        hasCurrentAction(identifier: identifier, in: state)
+    }
+
+    private func hasCurrentAction(identifier: String, in state: Any) -> Bool {
+        if (state as? IdentifiableAction)?.actionIdentifier == identifier { return true }
+        if state is ReflectionExempt { return false }
+        return Mirror(reflecting: state).children.first { hasCurrentAction(identifier: identifier, in: $0.value) } != nil ? true : false
+    }
+}
+
+public enum SourceArchitecture {
+    /// The superclass for all Sources. Contains the observable state and publishers used for subscriptions, etc.
+    open class Source<Model> {
+        public typealias Model = Model
+        fileprivate let lock = NSRecursiveLock()
+        fileprivate let observable = Observed<Model>()
+        public init() { }
+    }
+
+    /// A property wrapper that connects and updates a property's value from the state of an underlying Source.
+    /// The wrapper also calls the provided method every time the underlying Source updates.
+    /// For parent types that conform to the Renderer protocol, the method to call on Source updates can't be
+    /// specified as it will always be the Renderer's `render()` method.
+    @propertyWrapper
+    public struct Sourced<Parent, Model>: DynamicProperty, Parentable {
+
+        private final class Storage<StorageParent, StorageModel>: ObservableObject {
+            let objectWillChange = PassthroughSubject<Any, Never>()
+            let sourceClosure: ((StorageParent) -> AnySource<StorageModel>)?
+            var subscription: AnyCancellable?
+            var method: (StorageParent) -> (StorageModel) -> Void
+            var isRendering = false
+            let lock = NSRecursiveLock()
+            private weak var weakParent: AnyObject?
+            var parent: StorageParent? {
+                get { weakParent as? StorageParent }
+                set { weakParent = newValue as? AnyObject }
+            }
+
+            /// method to republish the new underlying Source's objectWillChange updates to our own publisher
+            ///  to trigger SwiftUI updates
+            func observe(_ source: AnySource<StorageModel>) {
+                lock.lock()
+                subscription = source.objectWillChange.sink {  [weak self] value in
+                    if let self {
+                        self.objectWillChange.send(value as Any)
+                    }
+                }
+                lock.unlock()
+                objectWillChange.send(source.state)
+            }
+
+            lazy var source: AnySource<StorageModel> = sourceClosure!(self.parent!)
+            {
+                didSet {
+                    observe(source)
+                    lock.lock()
+                    if let parent = parent {
+                        subscription = source.objectDidChange.sink { [weak self] state in
+                            if let self, let parent = self.weakParent as? StorageParent {
+                                self.method(parent)(state)
+                            }
+                        }
+                        lock.unlock()
+                        self.method(parent)(source.state)
+                    }
+                    else {
+                        lock.unlock()
                     }
                 }
             }
-            return instance[keyPath: storageKeyPath].model
+            init(method: ((StorageParent) -> (StorageModel) -> Void)?, sourceClosure: ((StorageParent) -> AnySource<StorageModel>)? = nil) {
+                self.method = { _ in { _ in } }
+                self.sourceClosure = sourceClosure
+                self.method = method ?? { [weak self] parent in
+                    { [weak self] _ in
+                        guard let self else { return }
+                        if !Thread.isMainThread {
+                            DispatchQueue.main.async {
+                                (parent as? any Renderer)?.render()
+                            }
+                        } else {
+                            if self.isRendering { return }
+                            self.isRendering = true
+                            (parent as? any Renderer)?.render()
+                            self.isRendering = false
+                        }
+                    }
+                }
+            }
+
+            func setParent(_ parent: AnyObject) {
+                guard self.parent == nil, let parent = parent as? StorageParent else {
+                    return
+                }
+                self.parent = parent
+                lock.lock()
+                subscription = source.objectDidChange.sink { [weak self] state in
+                    if let self, let parent = self.weakParent as? StorageParent {
+                        self.method(parent)(state)
+                    }
+                }
+                lock.unlock()
+            }
         }
-        @available(*, unavailable) set {}
-    }
 
-    public init(model: Model) {
-        source = ObservableSource(model)
-    }
+        @ObservedObject private var storage: Storage<Parent, Model>
 
-    fileprivate init<T: _SourceProtocol>(_ source: T) where T.Model == Model {
-        self.source = ObservableSource(source)
-    }
-
-    /// A method for other Sources to subscribe to this Source's updates in order to assemble or apply logic to different streams of values. This style of subscription (passing in the subscriber and method) instead of a closure prevents accidental capturing of objects that can result in retain cycles and leaks. It also allows subscription without needing to manage an AnyCancellable token to keep the subscription alive.
-    ///
-    /// - Parameter sendInitialModel: pass in false if you *don't* want the subscriber method to be called with the initial model value and to instead only be called with future updates.
-    @discardableResult
-    public func subscribe<T: _SourceProtocol>(_ source: T, method: @escaping (T) -> (Model) -> Void, sendInitialModel: Bool = true) -> Source<Model> {
-        self.source.subscribe(sendInitialModel: sendInitialModel, subscriber: source) { [weak source] in
-            guard let source = source else { return }
-            method(source)($0)
+        public var wrappedValue: Model {
+            storage.source.state
         }
-        return self
-    }
 
-    /// A method for other Sources to subscribe to this Source's updates in order to assemble or apply logic to different streams of values. This style of subscription (passing in the subscriber and method) instead of a closure prevents accidental capturing of objects that can result in retain cycles and leaks. It also allows subscription without needing to manage an AnyCancellable token to keep the subscription alive.
-    ///
-    /// - Parameter sendInitialModel: pass in false if you *don't* want the subscriber method to be called with the initial model value and to instead only be called with future updates.
-    @discardableResult
-    public func subscribe<T: _SourceProtocol, U>(_ source: T, method: @escaping (T) -> (U) -> Void, sendInitialModel: Bool = true) -> Source<Model> where Model == U? {
-        self.source.subscribe(sendInitialModel: sendInitialModel, subscriber: source) { [weak source] in
-            guard let source = source, let model = $0 else { return }
-            method(source)(model)
+        fileprivate func setParent(_ parent: AnyObject) {
+            storage.setParent(parent)
         }
-        return self
-    }
 
-    /// A method for other Sources to subscribe to this Source's updates in order to assemble or apply logic to different streams of values. This style of subscription (passing in the subscriber and method) instead of a closure prevents accidental capturing of objects that can result in retain cycles and leaks. It also allows subscription without needing to manage an AnyCancellable token to keep the subscription alive.
-    ///
-    /// - Parameter sendInitialModel: pass in false if you *don't* want the subscriber method to be called with the initial model value and to instead only be called with future updates.
-    @discardableResult
-    public func subscribe<T: _SourceProtocol>(_ source: T, method: @escaping (T) -> () -> Void, sendInitialModel: Bool = true) -> Source<Model> {
-        self.source.subscribe(sendInitialModel: sendInitialModel, subscriber: source) { [weak source] _ in
-            guard let source = source else { return }
-            method(source)()
+        public static subscript(
+            _enclosingInstance instance: Parent,
+            wrapped wrappedKeyPath: KeyPath<Parent, Model>,
+            storage storageKeyPath: ReferenceWritableKeyPath<Parent,  Sourced<Parent, Model>>
+        ) -> Model {
+            let sourced = instance[keyPath: storageKeyPath]
+            sourced.setParent(instance as AnyObject)
+            return sourced.wrappedValue
         }
-        return self
-    }
 
-    /// Unsubscribes a Source from receiving further updates when this Source's model changes
-    public func unsubscribe<T: _SourceProtocol>(_ source: T) {
-        self.source.unsubscribe(source)
-    }
+        public func clearSource<T>() where Model == T? {
+            setSource(SingleValueSource<Model>(nil).eraseToAnySource())
+        }
 
-    /// A subscription method that accepts a closure to call when the model value changes. Only intended to be used for testing Sources in test target, so requires @testable import SourceArchitecture to be visible
-    internal func subscribe(sendInitialModel: Bool = true, _ closure: @escaping (Model) -> Void) {
-        self.source.subscribe(subscriber: source, closure: closure)
+        public func setSource<T>(_ source: AnySource<T>) where Model == T? {
+            storage.source = source.map { Model.some($0) }
+        }
+
+        public func setSource(_ source: AnySource<Model>) {
+            storage.source = source
+        }
+
+        public init(from source: AnySource<Model>, updating method: @escaping (Parent) -> (Model) -> Void) where Parent: SourceProtocol {
+            storage = .init(method: method)
+            storage.source = source
+        }
+
+        public init(from source: AnySource<Model>, updating method: @escaping (Parent) -> () -> Void) where Parent: SourceProtocol {
+            storage = .init(method: { parent in { _ in method(parent)() } })
+            storage.source = source
+        }
+
+        public init(from keyPath: KeyPath<Parent, AnySource<Model>>, updating method: @escaping (Parent) -> (Model) -> Void) where Parent: SourceProtocol {
+            storage = .init(method: method, sourceClosure: { $0[keyPath: keyPath] })
+        }
+
+        public init(from keyPath: KeyPath<Parent, AnySource<Model>>, updating method: @escaping (Parent) -> () -> Void) where Parent: SourceProtocol {
+            storage = .init(method: { parent in { _ in method(parent)() } }, sourceClosure: { $0[keyPath: keyPath] })
+        }
+
+        public init<T>(updating method: @escaping (Parent) -> (Model) -> Void) where Parent: SourceProtocol, Model == T? {
+            storage = .init(method: method)
+            storage.source = SingleValueSource<Model>(nil).eraseToAnySource()
+        }
+
+        public init<T>(updating method: @escaping (Parent) -> (T) -> Void) where Parent: SourceProtocol, Model == T? {
+            storage = .init(method: { parent in { if let state = $0 { method(parent)(state) } } })
+            storage.source = SingleValueSource<Model>(nil).eraseToAnySource()
+        }
+
+        public init<T>(updating method: @escaping (Parent) -> () -> Void) where Parent: SourceProtocol, Model == T? {
+            storage = .init(method: { parent in { _ in method(parent)() } })
+            storage.source = SingleValueSource<Model>(nil).eraseToAnySource()
+        }
+
+        public init(from source: AnySource<Model>) where Parent: Renderer {
+            storage = .init(method: nil)
+            storage.source = source
+            storage.observe(source)
+        }
+
+        public init(from keyPath: KeyPath<Parent, AnySource<Model>>) where Parent: Renderer {
+            storage = .init(method: nil, sourceClosure: { $0[keyPath: keyPath] })
+        }
+
+        public init<T>() where Parent: Renderer, Model == T? {
+            storage = .init(method: nil)
+            storage.source = SingleValueSource<Model>(nil).eraseToAnySource()
+        }
     }
 }
 
-/// Combine interoperability
-public extension Source {
-    func eraseToAnyPublisher() -> AnyPublisher<Model, Never> {
-        defer { source.publisher.send(source.model) }
-        return source.publisher.eraseToAnyPublisher()
+public extension SourceArchitecture.Source {
+    /// A property wrapper that makes a property on a Source thread safe by using the Source's lock when reading and writing the value.
+    @propertyWrapper
+    final class Threadsafe<Value> {
+        public var wrappedValue: Value {
+            @available(*, unavailable) get { fatalError() }
+            @available(*, unavailable) set { fatalError() }
+        }
+        private var value: Value
+
+        /// This method of returning the wrappedValue allows us to also access the Source instance that contains this property in order to use its lock. It also allows us to restrict usage of the @Threadsafe property wrapper to only be used within Sources
+        public static subscript<Model, T: Source<Model>>(
+            _enclosingInstance instance: T,
+            wrapped wrappedKeyPath: KeyPath<T, Value>,
+            storage storageKeyPath: KeyPath<T, Threadsafe<Value>>
+        ) -> Value {
+            get {
+                instance.lock.lock()
+                let threadsafe = instance[keyPath: storageKeyPath]
+                defer { instance.lock.unlock() }
+                return threadsafe.value
+            }
+            set {
+                instance.lock.lock()
+                let threadsafe = instance[keyPath: storageKeyPath]
+                threadsafe.value = newValue
+                instance.lock.unlock()
+            }
+        }
+
+        public init(wrappedValue: Value) {
+            self.value = wrappedValue
+        }
     }
-}
 
-extension Source: CustomDebugStringConvertible {
-    public var debugDescription: String { "Source<\(Model.self)>(model: \(model))" }
-}
-
-extension Source: CustomStringConvertible {
-    public var description: String { "Source<\(Model.self)>(model: \(model))" }
-}
-
-public extension _Source {
     /// A property wrapper that can only be used by Sources in order to create an Action which will call a method on the Source when invoked. The method which should be called is declared along with the property, e.g. `@ActionFromMethod(doSomething) var doSomethingAction`
     @propertyWrapper
-    struct ActionFromMethod<Source: _SourceProtocol, Input> {
+    struct ActionFromMethod<Source: SourceProtocol, Input> {
         /// This property is unvailable and never callable, since the wrappedValue will instead be accessed through the static subscript in order to get a reference to the containing Source
         @available(*, unavailable)
-        public var wrappedValue: SourceArchitecture.Action<Input> { fatalError() }
+        public var wrappedValue: Action<Input> { fatalError() }
         private let uuid = UUID().uuidString
         private let method: (Source) -> (Input) -> Void
 
         /// This method of returning the wrappedValue allows us to also access the Source instance that contains this property. It also allows us to restrict usage of the @ActionFromMethod property wrapper to only be used in Source
         public static subscript(
             _enclosingInstance instance: Source,
-            wrapped wrappedKeyPath: KeyPath<Source, SourceArchitecture.Action<Input>>,
+            wrapped wrappedKeyPath: KeyPath<Source, Action<Input>>,
             storage storageKeyPath: KeyPath<Source, ActionFromMethod<Source, Input>>
-        ) -> SourceArchitecture.Action<Input> {
+        ) -> Action<Input> {
             let action = instance[keyPath: storageKeyPath]
             // Reflect through all properties of our containing instance until we find the one that is this instance, and get the label. That will tell us what this Action is named based on its property name.
             let identifier = Mirror(reflecting: instance).children.first { ($0.value as? Self)?.uuid  == action.uuid }!.label!.dropFirst()
@@ -170,162 +345,71 @@ public extension _Source {
             self.method = { source in { [weak source] _ in if let source = source { return method(source)() } } }
         }
     }
+}
 
-    /// A property wrapper that makes a property on a Source thread safe by using the Source's lock when reading and writing the value.
-    @propertyWrapper
-    class Threadsafe<Value> {
-        public var wrappedValue: Value {
-            @available(*, unavailable) get { fatalError() }
-            @available(*, unavailable) set { fatalError() }
-        }
-        private var value: Value
 
-        /// This method of returning the wrappedValue allows us to also access the Source instance that contains this property in order to use its lock. It also allows us to restrict usage of the @Threadsafe property wrapper to only be used within Sources
-        public static subscript<T: _SourceProtocol>(
-            _enclosingInstance instance: T,
-            wrapped wrappedKeyPath: KeyPath<T, Value>,
-            storage storageKeyPath: KeyPath<T, Threadsafe<Value>>
-        ) -> Value {
-            get {
-                let threadsafe = instance[keyPath: storageKeyPath]
-                instance.lock.lock()
-                defer { instance.lock.unlock() }
-                return threadsafe.value
-            }
-            set {
-                let threadsafe = instance[keyPath: storageKeyPath]
-                instance.lock.lock()
-                threadsafe.value = newValue
-                instance.lock.unlock()
-            }
-        }
+// MARK: - AnySource Type & Extensions -
 
-        public init(wrappedValue: Value) {
-            self.value = wrappedValue
-        }
+public struct AnySource<Model> {
+    fileprivate let objectWillChange: Publishers.ReceiveOn<Published<Model?>.Publisher, RunLoop>
+    fileprivate let objectDidChange: PassthroughSubject<Model, Never>
+    fileprivate let stateClosure: () -> Model
+    public var state: Model { stateClosure() }
+
+    fileprivate init<T: Source<Model>>(_ source: T) where T.Model == Model {
+        stateClosure = { source.state }
+        objectWillChange = source.observable.objectWillChange
+        objectDidChange = source.observable.objectDidChange
     }
 }
 
-public extension Source {
-    func optional() -> Source<Model?> {
-        map { Optional($0) }
+/// Combine interoperability
+public extension AnySource {
+    func eraseToAnyPublisher() -> AnyPublisher<Model, Never> {
+        defer { objectDidChange.send(state) }
+        return objectDidChange.eraseToAnyPublisher()
     }
 }
 
-extension Source: Identifiable where Model: Identifiable {
-    public var id: Model.ID { model.id }
+extension AnySource: CustomDebugStringConvertible {
+    public var debugDescription: String { "AnySource<\(Model.self)>(state: \(state))" }
 }
 
-extension Source: Equatable where Model: Equatable {
-    public static func ==(lhs: Source<Model>, rhs: Source<Model>) -> Bool {
-        lhs.model == rhs.model
+extension AnySource: CustomStringConvertible {
+    public var description: String { "AnySource<\(Model.self)>(state: \(state))" }
+}
+
+extension AnySource: Identifiable where Model: Identifiable {
+    public var id: Model.ID { state.id }
+}
+
+extension AnySource: Equatable where Model: Equatable {
+    public static func ==(lhs: AnySource<Model>, rhs: AnySource<Model>) -> Bool {
+        lhs.state == rhs.state
     }
 }
 
-extension Source: Hashable where Model: Hashable {
+extension AnySource: Hashable where Model: Hashable {
     public func hash(into hasher: inout Hasher) {
-        model.hash(into: &hasher)
+        state.hash(into: &hasher)
     }
 }
 
-// MARK: - Source Protocols and Base Types
+// MARK: - Renderer Protocol & Extensions -
 
-/// A typealias used to create new Sources, which must both subclass `_Source<Model>` and conform to `_SourceProtocol`. This typealias allows new Sources to do both with a single supertype, e.g. `class MySource: SourceOf<String>`
-public typealias SourceOf<Model> = _Source<Model> & _SourceProtocol
-
-public protocol _SourceProtocol: _RestrictedSource, _AssociatedModelProtocol {
-    var initialModel: Model { get }
-}
-
-public extension _SourceProtocol {
-    /// The current model value for this Source. This default implementation of the `model` property uses locking for thread safety and automatically publishes new values to subscribers.
-    var model: Model {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            if let model = _model as? Model {
-                return model
-            }
-            let model = initialModel
-            (self as? any (_SourceProtocol & DecodableActionSource))?.setSourceOn(model: model)
-            return model
-        }
-        set {
-            lock.lock()
-            let model = newValue
-            (self as? any (_SourceProtocol & DecodableActionSource))?.setSourceOn(model: model)
-            _model = model
-            lock.unlock()
-        }
-    }
-
-    /// Create a type-erased Source of the Model type from this implementation, which can be used by Renderers or subscribed to by other Sources.
-    func eraseToSource<T>() -> Source<T> where Model == T {
-        Source(self)
-    }
-}
-
-fileprivate extension _SourceProtocol {
-    var lock: NSRecursiveLock {
-        (self as! _Source<Model>).lock
-    }
-
-    var publisher: PassthroughSubject<Model, Never> {
-        (self as! _Source<Model>).publisher
-    }
-
-    var _model: Any {
-        get { (self as! _Source<Model>)._model }
-        set { (self as! _Source<Model>)._model = newValue }
-    }
-
-    func hasCurrentAction(identifier: String) -> Bool {
-        hasCurrentAction(identifier: identifier, in: model)
-    }
-
-    func hasCurrentAction(identifier: String, in model: Any) -> Bool {
-        if (model as? IdentifiableAction)?.actionIdentifier == identifier { return true }
-        if model is ReflectionExempt { return false }
-        return Mirror(reflecting: model).children.first { hasCurrentAction(identifier: identifier, in: $0.value) } != nil ? true : false
-    }
-}
-
-public protocol _AssociatedModelProtocol {
+public protocol Renderer {
     associatedtype Model
+    var model: Model { get }
+    func render()
 }
 
-/// A ComposedSource doesn't implement its own state or business logic, it merely assembles and / or transforms other Sources. Subclass it with all the parameters needed in the initializer, then call super.init with a closure that returns the assembled Source.
-open class ComposedSource<Model> {
-    private lazy var source = sourceClosure()
-    private let sourceClosure: () -> Source<Model>
-    public init(_ source: @escaping () -> Source<Model>) {
-        sourceClosure = source
-    }
-    public func eraseToSource() -> Source<Model> {
-        source
-    }
+public extension Renderer {
+    typealias Sourced<Model> = SourceArchitecture.Sourced<Self, Model>
 }
 
-/// The ultimate base class for Sources. It can only be subclassed / initialized within the SourceArchitecture framework
-open class _RestrictedSource {
-    fileprivate init() { }
+public extension Renderer where Self: View {
+    func render() { }
 }
-
-/// The superclass for all Sources. Contains the lock used for updating the model, changing threadsafe properties, and subscribing.
-open class _Source<Model>: _RestrictedSource, _AssociatedModelProtocol {
-    public typealias Model = Model
-    fileprivate let lock = NSRecursiveLock()
-    fileprivate let publisher = PassthroughSubject<Model, Never>()
-    fileprivate var _model: Any = Empty() {
-        didSet {
-            if let model = _model as? Model {
-                publisher.send(model)
-            }
-        }
-    }
-    public override init() { }
-}
-
 
 // MARK: - Action -
 
@@ -339,7 +423,7 @@ public struct Action<Input>: Codable {
         let sourceIdentifier = file + ":\(line),\(column)"
         return .init(actionIdentifier: "placeholder", sourceIdentifier: sourceIdentifier) {
             assertionFailure("Attempted to execute a placeholder Action created at \(sourceIdentifier)")
-            ActionExecution._publisher.send(.init(sourceIdentifier: sourceIdentifier, actionIdentifier: "placeholder", input: $0, error: Error.placeholderActionInvoked(sourceIdentifier)))
+            ActionExecution.subject.send(.init(sourceIdentifier: sourceIdentifier, actionIdentifier: "placeholder", input: $0, error: Error.placeholderActionInvoked(sourceIdentifier)))
         }
     }
     internal let actionIdentifier: String
@@ -360,7 +444,7 @@ public struct Action<Input>: Codable {
         self.sourceIdentifier = sourceIdentifier
         self.source = source
         self.execute = { [weak source] input in
-            guard let source = source?.object as? (any (_SourceProtocol & DecodableActionSource)), source.decodableActionSourceIdentifier == sourceIdentifier else {
+            guard let source = source?.object as? (any (SourceProtocol & DecodableActionSource)), source.decodableActionSourceIdentifier == sourceIdentifier else {
                 throw Error.actionDecodedByWrongSource(sourceIdentifier + "." + actionIdentifier)
             }
             guard source.hasCurrentAction(identifier: actionIdentifier) else {
@@ -395,31 +479,30 @@ public struct Action<Input>: Codable {
     }
 }
 
-
 // MARK: - Action Extensions -
 
 public extension Action {
-    // Executes the Action with the provided input. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
+    /// Executes the Action with the provided input. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
     func callAsFunction(_ input: Input, ifUnavailable: ((ActionExecution) -> Bool)? = nil) {
         do {
             try execute(input)
-            ActionExecution._publisher.send(.init(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input, error: nil))
+            ActionExecution.subject.send(.init(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input, error: nil))
         } catch {
-            _ = ActionExecution._errors
+            _ = ActionExecution.errorsPublisher
             let execution = ActionExecution(sourceIdentifier: sourceIdentifier, actionIdentifier: actionIdentifier, input: input, error: error)
             if let ifUnavailable = ifUnavailable {
                 if ifUnavailable(execution) {
-                    ActionExecution._publisher.send(execution)
+                    ActionExecution.subject.send(execution)
                 }
             } else {
-                ActionExecution._publisher.send(execution)
+                ActionExecution.subject.send(execution)
             }
         }
     }
 }
 
 public extension Action where Input == Void {
-    // Executes the Action. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
+    /// Executes the Action. If a closure is provided as well, then the closure will be called if the Action is unavailable because the underlying Source has deinitialized or is in a different state that doesn't allow this Action. Return true from the closure to propogate the error to the ActionExecution.errors stream as well, or false to not include it in the stream for further handling.
     func callAsFunction(ifUnavailable: ((ActionExecution) -> Bool)? = nil) {
         callAsFunction((), ifUnavailable: ifUnavailable)
     }
@@ -457,7 +540,7 @@ fileprivate extension Action {
         }
     }
 
-    init<T: _SourceProtocol>(actionIdentifier: String, source: T, method: @escaping (T) -> (Input) -> Void) {
+    init<T: SourceProtocol>(actionIdentifier: String, source: T, method: @escaping (T) -> (Input) -> Void) {
         let sourceIdentifier = (source as? DecodableActionSource)?.decodableActionSourceIdentifier ?? String(describing: type(of: source))
         self.init(actionIdentifier: actionIdentifier, sourceIdentifier: sourceIdentifier) { [weak source] input in
             guard let source = source else {
@@ -470,7 +553,7 @@ fileprivate extension Action {
         }
     }
 
-    init<T: _SourceProtocol>(actionIdentifier: String, source: T, method: @escaping (T) -> () -> Void) where Input == Void {
+    init<T: SourceProtocol>(actionIdentifier: String, source: T, method: @escaping (T) -> () -> Void) where Input == Void {
         let sourceIdentifier = (source as? DecodableActionSource)?.decodableActionSourceIdentifier ?? String(describing: type(of: source))
         self.init(actionIdentifier: actionIdentifier, sourceIdentifier: sourceIdentifier) { [weak source] _ in
             guard let source = source else {
@@ -486,11 +569,11 @@ fileprivate extension Action {
 
 fileprivate protocol IdentifiableAction {
     var actionIdentifier: String { get }
-    func setSourceIfNeeded(_ source: any _SourceProtocol)
+    func setSourceIfNeeded(_ source: any SourceProtocol)
 }
 
 extension Action: IdentifiableAction {
-    fileprivate func setSourceIfNeeded(_ source: any _SourceProtocol) {
+    fileprivate func setSourceIfNeeded(_ source: any SourceProtocol) {
         guard source is DecodableActionSource else { return }
         guard self.source.object == nil else { return }
         guard (source as? DecodableActionSource)?.decodableActionSourceIdentifier == sourceIdentifier else { return }
@@ -506,31 +589,31 @@ extension Action: CustomStringConvertible, CustomDebugStringConvertible {
 
 /// A record of an Action being executed, including the description and input that was used
 public struct ActionExecution {
+    public static let publisher = subject.eraseToAnyPublisher()
+    fileprivate static let subject = PassthroughSubject<ActionExecution, Never>()
 
-    public static let publisher = _publisher.eraseToAnyPublisher()
-    fileprivate static let _publisher = PassthroughSubject<ActionExecution, Never>()
-
+    /// A publisher of all ActionExecution errors. If client code retrieves this publisher to subscribe and handle the errors in a custom manner, the default error handling (printing in debug builds) is automatically cancelled
     public static var errors: AnyPublisher<ActionExecution, Never> {
         defer {
-            _defaultErrorSubscription?.cancel()
-            _defaultErrorSubscription = nil
+            defaultErrorSubscription.clear()
         }
-        return _errors.eraseToAnyPublisher()
+        return errorsPublisher.eraseToAnyPublisher()
     }
-    fileprivate static let _errors = {
+
+    fileprivate static let errorsPublisher = {
         let publisher = ActionExecution.publisher.filter { $0.error != nil }
-        _defaultErrorSubscription = publisher.sink { execution in
+        defaultErrorSubscription.set(publisher.sink { execution in
             guard let error = execution.error else { return }
             // assert ensures it only runs in non-release builds
             assert({
                 print(error)
                 return true
             }())
-        }
+        })
         return publisher
     }()
 
-    private static var _defaultErrorSubscription: AnyCancellable?
+    private static let defaultErrorSubscription = SubscriptionHandler()
 
     public let sourceIdentifier: String
     public let actionIdentifier: String
@@ -551,25 +634,25 @@ public extension DecodableActionSource {
     var decodableActionSourceIdentifier: String { String(describing: type(of: self)) }
 }
 
-fileprivate extension _SourceProtocol where Self: DecodableActionSource {
-    func setSourceOn(model: Any) {
-        if let action = model as? IdentifiableAction {
+fileprivate extension SourceProtocol where Self: DecodableActionSource {
+    func setSourceOn(state: Any) {
+        if let action = state as? IdentifiableAction {
             action.setSourceIfNeeded(self)
             return
         }
-        if model is ReflectionExempt { return }
-        return Mirror(reflecting: model).children.forEach { setSourceOn(model: $0.value) }
+        if state is ReflectionExempt { return }
+        return Mirror(reflecting: state).children.forEach { setSourceOn(state: $0.value) }
     }
 }
 
 /// A private protocol used for connecting decoded Actions to the correct method on a Source
 fileprivate protocol SourceMethodResolving {
-    func resolvedMethod<ResolvedInput, ForSource: _SourceProtocol>(for source: ForSource, input: ResolvedInput) -> (() -> Void)?
+    func resolvedMethod<ResolvedInput, ForSource: SourceProtocol>(for source: ForSource, input: ResolvedInput) -> (() -> Void)?
 }
 
-extension _Source.ActionFromMethod: SourceMethodResolving {
+extension SourceArchitecture.Source.ActionFromMethod: SourceMethodResolving {
     /// Retrieves the method that should be called by a decoded Action
-    fileprivate func resolvedMethod<ResolvedInput, ForSource: _SourceProtocol>(for source: ForSource, input: ResolvedInput) -> (() -> Void)? {
+    fileprivate func resolvedMethod<ResolvedInput, ForSource: SourceProtocol>(for source: ForSource, input: ResolvedInput) -> (() -> Void)? {
         guard let source = source as? Source, let input = input as? Input else { return nil }
         return { method(source)(input) }
     }
@@ -578,65 +661,35 @@ extension _Source.ActionFromMethod: SourceMethodResolving {
 
 // MARK: - Private Helper Types -
 
-/// A private implementation type which implements ObservableObject to trigger updates from the containing @Source property wrapper in SwiftUI Views. It also holds a dictionary of subscriptions and provides a way to subscribe to the underlying  Source's value.
-private final class ObservableSource<Model>: ObservableObject {
-    let objectWillChange: AnyPublisher<Void, Never>
-    var model: Model { modelClosure() }
-    let lock: NSRecursiveLock
-    let publisher: PassthroughSubject<Model, Never>
-    let modelClosure: () -> Model
-    var subscriptions = [ObjectIdentifier: AnyCancellable]()
-
-    init<T: _SourceProtocol>(_ source: T) where T.Model == Model {
-        lock = source.lock
-        publisher = source.publisher
-        modelClosure = { source.model }
-        objectWillChange = source.publisher.map { _ in () }.receive(on: DispatchQueue.main).eraseToAnyPublisher()
-    }
-
-    init(_ model: Model) {
-        lock = .init()
-        let publisher = PassthroughSubject<Model, Never>()
-        self.publisher = publisher
-        modelClosure = { model }
-        objectWillChange = publisher.map { _ in () }.receive(on: DispatchQueue.main).eraseToAnyPublisher()
-    }
-
-    func unsubscribe<T: AnyObject>(_ subscriber: T) {
-        lock.lock()
-        subscriptions[ObjectIdentifier(subscriber)] = nil
-        lock.unlock()
-    }
-
-    func subscribe<T: AnyObject>(sendInitialModel: Bool = true, subscriber: T, closure: @escaping (Model) -> Void) {
-        let identifier = ObjectIdentifier(subscriber)
-        lock.lock()
-        if subscriptions[identifier] == nil {
-            subscriptions[identifier] = publisher.sink { [weak subscriber, weak self] in
-                guard subscriber != nil else {
-                    self?.lock.lock()
-                    self?.subscriptions[identifier] = nil
-                    self?.lock.unlock()
-                    return
-                }
-                closure($0)
-            }
-            lock.unlock()
-            if sendInitialModel {
-                closure(model)
-            }
-        } else {
-            lock.unlock()
-        }
-    }
+private protocol Parentable {
+    func setParent(_ parent: AnyObject)
 }
 
-private class WeakReference {
+fileprivate final class Observed<T> {
+    @Published fileprivate var state: T! {
+        didSet {
+            objectDidChange.send(state)
+        }
+    }
+    fileprivate var objectWillChange: Publishers.ReceiveOn<Published<T?>.Publisher, RunLoop> { $state.receive(on: RunLoop.main) }
+    fileprivate var objectDidChange = PassthroughSubject<T, Never>()
+}
+
+private final class WeakReference {
     weak var object: AnyObject?
     init() { }
 }
 
-private struct Empty { }
+private final class SubscriptionHandler {
+    private var subscription: AnyCancellable?
+    func set(_ subscription: AnyCancellable?) {
+        self.subscription = subscription
+    }
+    func clear() {
+        subscription?.cancel()
+        subscription = nil
+    }
+}
 
 
 // MARK: - Reflection Exempt Protocol and Extensions -
@@ -644,21 +697,9 @@ private struct Empty { }
 /// A protocol for specifying types that shouldn't be reflected through when looking up existing Actions. For example, we don't need to reflect into a child Source, because it already manages its own Actions. Not skipping these types can cause excessive or infinite recursion
 fileprivate protocol ReflectionExempt { }
 
-extension Source: ReflectionExempt { }
-extension _Source: ReflectionExempt { }
+extension AnySource: ReflectionExempt { }
+extension SourceArchitecture.Sourced: ReflectionExempt { }
+extension SourceArchitecture.Source: ReflectionExempt { }
 extension Array: ReflectionExempt where Element: ReflectionExempt { }
 extension Set: ReflectionExempt where Element: ReflectionExempt { }
 extension Optional: ReflectionExempt where Wrapped: ReflectionExempt { }
-
-
-// MARK: - Renderer Protocol -
-
-public protocol Renderer {
-    associatedtype Model
-    var model: Model { get nonmutating set }
-    func render()
-}
-
-public extension Renderer where Self: View {
-    func render() { }
-}

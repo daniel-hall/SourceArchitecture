@@ -31,14 +31,14 @@ import SwiftUI
 
 public struct ToDoListView: View, Renderer {
 
-    @Source public var model: ToDoList
+    @Sourced public var model: ToDoList
     @FocusState private var focus: String?
     @State private var hasNewCell = false
     @State private var refresh = 0
     @State private var scroll = DispatchWorkItem { }
 
-    public init(source: Source<ToDoList>) {
-        _model = source
+    public init(source: AnySource<ToDoList>) {
+        _model = .init(from: source)
     }
 
     public var body: some View {
@@ -49,7 +49,7 @@ public struct ToDoListView: View, Renderer {
                         .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", role: .destructive) {
-                                item.model.delete()
+                                item.state.delete()
                             }
                         }
                 }

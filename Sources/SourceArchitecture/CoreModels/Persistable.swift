@@ -1,8 +1,7 @@
 //
-//  Persistable.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +50,6 @@ public enum Persistable<Value> {
         return nil
     }
     
-    @dynamicMemberLookup
     public struct Found {
         public let set: Action<Value>
         public let clear: Action<Void>
@@ -63,14 +61,6 @@ public enum Persistable<Value> {
             self.isExpired = isExpired
             self.set = set
             self.clear = clear
-        }
-        
-        public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-            value[keyPath: keyPath]
-        }
-        
-        public subscript<T, V>(dynamicMember keyPath: KeyPath<V, T>) -> T? where Value == Optional<V> {
-            value?[keyPath: keyPath]
         }
     }
     

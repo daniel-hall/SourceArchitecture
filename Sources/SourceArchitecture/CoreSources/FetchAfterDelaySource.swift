@@ -1,8 +1,7 @@
 //
-//  AfterDelaySource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -23,38 +22,36 @@
 //  SOFTWARE.
 //
 
-
 import Foundation
 
-private final class FetchAfterDelaySource<Model>: SourceOf<Fetchable<Model>> {
+private final class FetchAfterDelaySource<Model>: Source<Fetchable<Model>> {
 
-    fileprivate var initialModel: Fetchable<Model> = .fetching(.init(progress: nil))
-    @Source private var fetchable: Fetchable<Model>
+    fileprivate var initialState: Fetchable<Model> = .fetching(.init(progress: nil))
+    @Sourced(updating: update) private var fetchable: Fetchable<Model>?
 
-    fileprivate init(fetchable: Source<Fetchable<Model>>, delay: TimeInterval) {
-        _fetchable = fetchable
+    fileprivate init(fetchable: AnySource<Fetchable<Model>>, delay: TimeInterval) {
         super.init()
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [weak self] in
             if let self = self {
-                fetchable.subscribe(self, method: FetchAfterDelaySource.update)
+                self._fetchable.setSource(fetchable)
             }
         }
     }
 
     private func update(_ value: Fetchable<Model>) {
-        model = value
+        state = value
     }
 }
 
-public extension Source where Model: FetchableRepresentable {
+public extension AnySource where Model: FetchableRepresentable {
     @_disfavoredOverload
-    func fetchAfterDelay(of numberOfSeconds: TimeInterval) -> Source<Fetchable<Model.Value>> {
-        FetchAfterDelaySource(fetchable: self.map { $0.asFetchable() }, delay: numberOfSeconds).eraseToSource()
+    func fetchAfterDelay(of numberOfSeconds: TimeInterval) -> AnySource<Fetchable<Model.Value>> {
+        FetchAfterDelaySource(fetchable: self.map { $0.asFetchable() }, delay: numberOfSeconds).eraseToAnySource()
     }
 }
 
-public extension Source where Model: FetchableWithPlaceholderRepresentable {
-    func fetchAfterDelay(of numberOfSeconds: TimeInterval) -> Source<FetchableWithPlaceholder<Model.Value, Model.Placeholder>> {
-        FetchAfterDelaySource(fetchable: self.map { $0.asFetchableWithPlaceholder().asFetchable() }, delay: numberOfSeconds).eraseToSource().addingPlaceholder(model.asFetchableWithPlaceholder().placeholder)
+public extension AnySource where Model: FetchableWithPlaceholderRepresentable {
+    func fetchAfterDelay(of numberOfSeconds: TimeInterval) -> AnySource<FetchableWithPlaceholder<Model.Value, Model.Placeholder>> {
+        FetchAfterDelaySource(fetchable: self.map { $0.asFetchableWithPlaceholder().asFetchable() }, delay: numberOfSeconds).eraseToAnySource().addingPlaceholder(state.asFetchableWithPlaceholder().placeholder)
     }
 }

@@ -44,7 +44,7 @@ struct MovieSearch {
         let releaseDate: String
         let rating: String
         // A Source that will fetch a thumbnail image for the movie and has a placeholder image
-        let thumbnail: Source<FetchableWithPlaceholder<UIImage, UIImage>>
+        let thumbnail: AnySource<FetchableWithPlaceholder<UIImage, UIImage>>
         let select: Action<Void>
     }
 }
@@ -70,15 +70,15 @@ struct MovieSearchResponse: Decodable {
 // MARK: - Dependencies -
 
 protocol FetchableMovieSearchResponseDependency {
-    func movieSearchResponse(for searchTerm: String, page: Int?) -> Source<Fetchable<MovieSearchResponse>>
+    func movieSearchResponse(for searchTerm: String, page: Int?) -> AnySource<Fetchable<MovieSearchResponse>>
 }
 
 protocol FetchableMovieThumbnailDependency {
-    func movieThumbnail(from url: URL) -> Source<Fetchable<UIImage>>
+    func movieThumbnail(from url: URL) -> AnySource<Fetchable<UIImage>>
 }
 
 // This Source makes network requests to get search results, converts the network response models to the expected app model, and keeps track of current page and total pages of result to manage loading more when requested
-final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
+final class MovieSearchSource: Source<Fetchable<MovieSearch>> {
 
     typealias Dependencies = FetchableMovieSearchResponseDependency & FetchableMovieThumbnailDependency & SelectedMovieDependency
 
@@ -88,20 +88,21 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
 
 
     // The Source that will update with the actual network request results. A new one is created for every new API query
-    @Threadsafe private var fetchableSource: Source<Fetchable<MovieSearchResponse>>?
-    @Threadsafe private var searchTerm: String?
-    @Threadsafe private var accumulatedResults = [MovieSearch.Result]()
-    @Threadsafe private var currentPage = 1
-    @Threadsafe private var totalPages = 1
+    @Sourced(updating: handleResponse) private var fetchedResponse: Fetchable<MovieSearchResponse>?
+    private var searchTerm: String?
+    private var accumulatedResults = [MovieSearch.Result]()
+    private var currentPage = 1
+    private var totalPages = 1
 
     /// The default initial value of the Model that this Source should return if no other model has been calculated or set yet
-    lazy var initialModel = Fetchable<MovieSearch>.fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: searchAction, loadMore: loadMoreAction), refresh: refreshAction))
+    lazy var initialState = Fetchable<MovieSearch>.fetched(.init(value: .init(currentSearchTerm: nil, results: [], search: searchAction, loadMore: loadMoreAction), refresh: refreshAction))
 
     private let dependencies: Dependencies
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
     }
+
 
     private func handleResponse(_ response: Fetchable<MovieSearchResponse>) {
         let movieSearch: Fetchable<MovieSearch> = response.map {
@@ -117,10 +118,10 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
                 // Create a Source to fetched the thumbnail image. If there is no URL then return a .failure with a placeholder image
                 let thumbnailSource = thumbnailURL.map {
                     dependencies.movieThumbnail(from: $0).addingPlaceholder(UIImage(systemName: "photo")!)
-                } ?? Source(model: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No thumbnail URL"]), failedAttempts: 1, retry: nil)))
+                } ?? SingleValueSource(.failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No thumbnail URL"]), failedAttempts: 1, retry: nil))).eraseToAnySource()
                 
                 // Create a selection Action for this result by mapping the selected movie setSelection Action<Int?> to Action<Void>, providing the current ID as the input
-                let selectAction = dependencies.selectedMovie.model.set.map { id }
+                let selectAction = dependencies.selectedMovie.state.set.map { id }
 
                 // Return our domain's MovieSearch.Result model
                 return .init(id: id, title: title, description: overview, releaseDate: releaseDate, rating: "⭐️ " + String(format:"%.01f", $0.vote_average ?? 0), thumbnail: thumbnailSource, select: selectAction)
@@ -136,7 +137,7 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
         if case .fetching = response, !accumulatedResults.isEmpty {
             return
         }
-        model = movieSearch
+        state = movieSearch
     }
 
     private func search(term: String?) {
@@ -149,16 +150,15 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
         accumulatedResults = []
         guard let term = term else {
             // If our term is nil, then just show empty results
-            model = .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: searchAction, loadMore: loadMoreAction), refresh: refreshAction))
+            state = .fetched(Fetchable.Fetched(value: MovieSearch(currentSearchTerm: term, results: [], search: searchAction, loadMore: loadMoreAction), refresh: refreshAction))
             return
         }
         // Fetch the search response from the API
-        fetchableSource = dependencies.movieSearchResponse(for: term, page: nil)
-        fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
+        _fetchedResponse.setSource(dependencies.movieSearchResponse(for: term, page: nil))
     }
 
     private func refresh() {
-        fetchableSource?.model.fetched?.refresh?()
+        fetchedResponse?.fetched?.refresh?()
     }
 
     private func loadMore() {
@@ -166,7 +166,6 @@ final class MovieSearchSource: SourceOf<Fetchable<MovieSearch>> {
             return
         }
         // Make a request for the next page of results for the current search term
-        fetchableSource = dependencies.movieSearchResponse(for: searchTerm, page: currentPage + 1)
-        fetchableSource?.subscribe(self, method: MovieSearchSource.handleResponse)
+        _fetchedResponse.setSource(dependencies.movieSearchResponse(for: searchTerm, page: currentPage + 1))
     }
 }

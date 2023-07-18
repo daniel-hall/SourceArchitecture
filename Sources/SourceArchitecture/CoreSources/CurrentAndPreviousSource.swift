@@ -1,8 +1,7 @@
 //
-//  CurrentAndPreviousSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +26,26 @@ import Foundation
 
 
 /// Publishes a CurrentAndPrevious value for any input Source
-private final class CurrentAndPreviousSource<Model>: SourceOf<CurrentAndPrevious<Model>> {
+private final class CurrentAndPreviousSource<Model>: Source<CurrentAndPrevious<Model>> {
 
-    @Threadsafe var previous: Model?
-    @Source var input: Model
+    var previous: Model?
+    @Sourced var input: Model
 
-    lazy var initialModel = {
-        _input.subscribe(self, method: CurrentAndPreviousSource.update, sendInitialModel: false)
-        return CurrentAndPrevious(current: input, previous: nil)
-    }()
+    lazy var initialState = CurrentAndPrevious(current: input, previous: nil)
 
-    init(input: Source<Model>) {
-        _input = input
+    init(input: AnySource<Model>) {
+        _input = .init(from: input, updating: CurrentAndPreviousSource.update)
     }
 
     func update(value: Model) {
-        model = .init(current: value, previous: previous)
+        state = .init(current: value, previous: previous)
         previous = value
     }
 }
 
-public extension Source {
+public extension AnySource {
     /// Converts a Source of a Model to a Source that publishes both the current and previous instance of the Model
-    func currentAndPrevious() -> Source<CurrentAndPrevious<Model>> {
-        CurrentAndPreviousSource(input: self).eraseToSource()
+    func currentAndPrevious() -> AnySource<CurrentAndPrevious<Model>> {
+        CurrentAndPreviousSource(input: self).eraseToAnySource()
     }
 }

@@ -1,26 +1,6 @@
 //
-//  CombinePublisherSource.swift
-//  SourceArchitecture
-//
-//  Copyright (c) 2022 Daniel Hall
-//
-//  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
-//  in the Software without restriction, including without limitation the rights
-//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//  copies of the Software, and to permit persons to whom the Software is
-//  furnished to do so, subject to the following conditions:
-//
-//  The above copyright notice and this permission notice shall be included in all
-//  copies or substantial portions of the Software.
-//
-//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-//  SOFTWARE.
+//  Created by Daniel Hall on 5/10/23.
+//  Copyright © 2023 Tinder. All rights reserved.
 //
 
 import Foundation
@@ -28,21 +8,21 @@ import Combine
 
 
 /// Provides a way to create a Source out of any Combine Publisher
-final private class CombinePublisherSource<Input: Publisher>: SourceOf<Input.Output> {
-    let initialModel: Model
+final private class CombinePublisherSource<Input: Publisher>: Source<Input.Output> {
+    let initialState: Model
     let input: Input
     var subscription: AnyCancellable?
     init(_ publisher: Input, initialModel: Model) {
         input = publisher
-        self.initialModel = initialModel
+        self.initialState = initialModel
         super.init()
-        subscription = input.sink(receiveCompletion: { _ in } , receiveValue: { [weak self] in self?.model = $0 })
+        subscription = input.sink(receiveCompletion: { _ in } , receiveValue: { [weak self] in self?.state = $0 })
     }
 }
 
 public extension Publisher {
-    func eraseToSource(initialValue: Output) -> Source<Output> {
-        CombinePublisherSource(self, initialModel: initialValue).eraseToSource()
+    func eraseToSource(initialValue: Output) -> AnySource<Output> {
+        CombinePublisherSource(self, initialModel: initialValue).eraseToAnySource()
     }
 }
 
@@ -54,14 +34,14 @@ private class PublishedWrapper<Value> {
 }
 
 public extension Published {
-    mutating func eraseToSource() -> Source<Value> {
+    mutating func eraseToAnySource() -> AnySource<Value> {
         let published = PublishedWrapper(self)
-        return CombinePublisherSource(self.projectedValue, initialModel: published.value).eraseToSource()
+        return CombinePublisherSource(self.projectedValue, initialModel: published.value).eraseToAnySource()
     }
 }
 
 public extension CurrentValueSubject {
-    func eraseToSource() -> Source<Output> {
-        CombinePublisherSource(self, initialModel: value).eraseToSource()
+    func eraseToSource() -> AnySource<Output> {
+        CombinePublisherSource(self, initialModel: value).eraseToAnySource()
     }
 }

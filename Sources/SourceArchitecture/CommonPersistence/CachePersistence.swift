@@ -1,8 +1,7 @@
 //
-//  CachePersistence.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -88,7 +87,7 @@ public class CachePersistence<Options: CachePersistenceOptions> {
     private var _currentSize: Int {
         lock.lock()
         defer { lock.unlock() }
-        return dictionary.reduce(0) { $0 + ($1.value.source?.model.size ?? 0) }
+        return dictionary.reduce(0) { $0 + ($1.value.source?.state.size ?? 0) }
     }
 
     private var _currentCount: Int {
@@ -99,7 +98,7 @@ public class CachePersistence<Options: CachePersistenceOptions> {
     private var sortedItems: [(key: String, value: WeakCacheSource)] {
         dictionary = dictionary.filter { !$0.value.isReleased }
         return dictionary.sorted {
-            guard let first = $0.1.source?.model, let second = $1.1.source?.model else { return true }
+            guard let first = $0.1.source?.state, let second = $1.1.source?.state else { return true }
             return (first.isExpired && !second.isExpired )
             || (first.isExpired && second.isExpired )
             || (first.retentionPolicy < second.retentionPolicy && !second.isExpired)
@@ -133,7 +132,7 @@ public class CachePersistence<Options: CachePersistenceOptions> {
         var sorted = sortedItems
         while currentCount > maxCount, sorted.count > 0 {
             let next = sorted.removeFirst()
-            dictionary[next.key]?.source?.model.clear()
+            dictionary[next.key]?.source?.state.clear()
             dictionary[next.key] = nil
             currentCount -= 1
         }
@@ -153,10 +152,10 @@ public class CachePersistence<Options: CachePersistenceOptions> {
         while currentSize > maxSize, sorted.count > 0 {
             let next = sorted.removeFirst()
             defer {
-                dictionary[next.key]?.source?.model.clear()
+                dictionary[next.key]?.source?.state.clear()
                 dictionary[next.key] = nil
             }
-            if let size = next.value.source?.model.size {
+            if let size = next.value.source?.state.size {
                 currentSize -= size
             }
         }
@@ -165,15 +164,15 @@ public class CachePersistence<Options: CachePersistenceOptions> {
     // If low memory, discard all items of lower priority
     @objc private func handleLowMemory() {
         lock.lock()
-        sortedItems.prefix { ($0.value.source?.model.retentionPolicy ?? .discardFirst) <= .discardUnderMemoryPressure
+        sortedItems.prefix { ($0.value.source?.state.retentionPolicy ?? .discardFirst) <= .discardUnderMemoryPressure
         }.forEach {
-            dictionary[$0.key]?.source?.model.clear()
+            dictionary[$0.key]?.source?.state.clear()
             dictionary[$0.key] = nil
         }
         lock.unlock()
     }
 
-    private func retrieve(_ descriptor: CacheDescriptor) -> Source<CachedItem> {
+    private func retrieve(_ descriptor: CacheDescriptor) -> AnySource<CachedItem> {
         lock.lock()
         let updateClosure: () -> Void = { [weak self] in
             self?.lock.lock()
@@ -210,11 +209,11 @@ fileprivate protocol MemoryManageable: AnyObject {
 
 /// A wrapper that helps us determine whether any external client code is actually using / retaining the Source. If the Source has a value, it will retain its own reference to hold in in cache. If it doesn't have a value, it will be removed when no external code is holding a reference to it. (If external code is holding a reference to it, then we should keep it in the cache dictionary, because that client code may set a value for the cache item!)
 fileprivate class WeakCacheSource: MemoryManageable {
-    private var strongReference: Source<CachedItem>?
-    var source: Source<CachedItem>?
+    private var strongReference: AnySource<CachedItem>?
+    var source: AnySource<CachedItem>?
     var isReleased: Bool { source == nil }
     init(updateClosure: @escaping () -> Void) {
-        let cacheSource = CachePersistenceSource(memory: self, updateClosure: updateClosure).eraseToSource()
+        let cacheSource = CachePersistenceSource(memory: self, updateClosure: updateClosure).eraseToAnySource()
         self.source = cacheSource
         self.strongReference = cacheSource
     }
@@ -242,7 +241,7 @@ public extension CachePersistence where Options == WithMaxSize {
         get { _currentSize }
     }
 
-    func persistableSource<Value: CacheSizeRepresentable>(for descriptor: CacheDescriptor) -> Source<Persistable<Value>> {
+    func persistableSource<Value: CacheSizeRepresentable>(for descriptor: CacheDescriptor) -> AnySource<Persistable<Value>> {
         retrieve(descriptor).map { $0.asPersistable() }
     }
 }
@@ -272,7 +271,7 @@ public extension CachePersistence where Options == WithMaxSizeAndMaxCount {
         _currentCount
     }
 
-    func persistableSource<Value: CacheSizeRepresentable>(for descriptor: CacheDescriptor) -> Source<Persistable<Value>> {
+    func persistableSource<Value: CacheSizeRepresentable>(for descriptor: CacheDescriptor) -> AnySource<Persistable<Value>> {
         retrieve(descriptor).map { $0.asPersistable() }
     }
 }
@@ -290,13 +289,13 @@ public extension CachePersistence where Options == WithMaxCount {
         _currentCount
     }
 
-    func persistableSource<Value>(for descriptor: CacheDescriptor) -> Source<Persistable<Value>> {
+    func persistableSource<Value>(for descriptor: CacheDescriptor) -> AnySource<Persistable<Value>> {
         return retrieve(descriptor).map { $0.asPersistable() }
     }
 }
 
 public extension CachePersistence where Options == WithUnlimitedSizeAndCount {
-    func persistableSource<Value>(for descriptor: CacheDescriptor) -> Source<Persistable<Value>> {
+    func persistableSource<Value>(for descriptor: CacheDescriptor) -> AnySource<Persistable<Value>> {
         retrieve(descriptor).map { $0.asPersistable() }
     }
 }
@@ -339,16 +338,16 @@ extension CachedItem {
 // MARK: - CachePersistence Source -
 
 /// The Source that manages each cached value. If multiple client sites are using the same Cached item, they will have a reference to the same Source and get updates when the value is changed from other client code, etc.
-fileprivate final class CachePersistenceSource: SourceOf<CachedItem> {
+fileprivate final class CachePersistenceSource: Source<CachedItem> {
 
     @ActionFromMethod(set) var setAction
     @ActionFromMethod(clear) var clearAction
-    @Threadsafe var expireWorkItem: DispatchWorkItem?
+    var expireWorkItem: DispatchWorkItem?
 
     let updateClosure: () -> Void
     weak var memory: MemoryManageable?
 
-    lazy var initialModel: CachedItem = { [unowned self] in
+    lazy var initialState: CachedItem = { [unowned self] in
         return CachedItem(value: nil, size: nil, retentionPolicy: .discardUnderMemoryPressure, expireAfter: nil, dateLastSet: Date(), isExpired: true, set: self.setAction, clear: self.clearAction)
     }()
 
@@ -365,19 +364,19 @@ fileprivate final class CachePersistenceSource: SourceOf<CachedItem> {
             expireWorkItem?.cancel()
             expireWorkItem = .init { [weak self] in
                 guard let self = self else { return }
-                self.model = .init(value: self.model.value, size: self.model.size, retentionPolicy: self.model.retentionPolicy, expireAfter: self.model.expireAfter, dateLastSet: Date(), isExpired: true, set: self.model.set, clear: self.model.clear)
+                self.state = .init(value: self.state.value, size: self.state.size, retentionPolicy: self.state.retentionPolicy, expireAfter: self.state.expireAfter, dateLastSet: Date(), isExpired: true, set: self.state.set, clear: self.state.clear)
             }
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + expireAfter, execute: expireWorkItem!)
             return cachedDate.distance(to: Date()) < expireAfter
         } ?? false
 
-        model = .init(value: cachedItem.value, size: cachedItem.size, retentionPolicy: cachedItem.retentionPolicy, expireAfter: nil, dateLastSet: Date(), isExpired: isExpired, set: setAction, clear: clearAction)
+        state = .init(value: cachedItem.value, size: cachedItem.size, retentionPolicy: cachedItem.retentionPolicy, expireAfter: nil, dateLastSet: Date(), isExpired: isExpired, set: setAction, clear: clearAction)
     }
 
     func clear() {
         memory?.release()
         updateClosure()
-        model = .init(value: nil, size: nil, retentionPolicy: model.retentionPolicy, expireAfter: model.expireAfter, dateLastSet: Date(), isExpired: model.isExpired, set: model.set, clear: model.clear)
+        state = .init(value: nil, size: nil, retentionPolicy: state.retentionPolicy, expireAfter: state.expireAfter, dateLastSet: Date(), isExpired: state.isExpired, set: state.set, clear: state.clear)
     }
 }
 

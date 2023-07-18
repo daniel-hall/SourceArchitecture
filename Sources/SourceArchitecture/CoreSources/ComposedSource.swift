@@ -25,30 +25,14 @@
 import Foundation
 
 
-private final class _MutableSource<Model>: Source<Mutable<Model>> {
-
-    @ActionFromMethod(set) var setAction
-
-    let initialValue: Model
-    lazy var initialState = Mutable(value: initialValue, set: setAction)
-
-    public init(_ initialValue: Model) {
-        self.initialValue = initialValue
+/// A ComposedSource doesn't implement its own state or business logic, it merely assembles and / or transforms other Sources. Subclass it with all the parameters needed in the initializer, then call super.init with a closure that returns the assembled Source.
+open class ComposedSource<Model> {
+    private lazy var source = sourceClosure()
+    private let sourceClosure: () -> AnySource<Model>
+    public init(_ source: @escaping () -> AnySource<Model>) {
+        sourceClosure = source
     }
-
-    private func set(_ value: Model) {
-        state = .init(value: value, set: setAction)
-    }
-}
-
-public final class MutableSource<Model>: ComposedSource<Mutable<Model>> {
-    public init(_ initialValue: Model) {
-        super.init{ _MutableSource(initialValue).eraseToAnySource() }
-    }
-}
-
-public extension AnySource where Model: MutableRepresentable {
-    func nonmutating() -> AnySource<Model.Value> {
-        map { $0.asMutable().value }
+    public func eraseToAnySource() -> AnySource<Model> {
+        source
     }
 }

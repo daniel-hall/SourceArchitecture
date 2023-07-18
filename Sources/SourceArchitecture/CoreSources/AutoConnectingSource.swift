@@ -1,8 +1,7 @@
 //
-//  AutoConnectingSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -26,28 +25,27 @@
 import Foundation
 
 
-private final class AutoConnectingSource<Model>: SourceOf<Model> {
+private final class AutoConnectingSource<Model>: Source<Model> {
 
-    @Source var connectable: Connectable<Model>
+    @Sourced var connectable: Connectable<Model>
 
-    lazy var initialModel: Model = {
-        _connectable.subscribe(self, method: AutoConnectingSource.update, sendInitialModel: false)
+    lazy var initialState: Model = {
         connectable.connect()
         return connectable.connected!.value
     }()
 
-    init(_ connectable: Source<Connectable<Model>>) {
-        _connectable = connectable
+    init(_ connectableSource: AnySource<Connectable<Model>>) {
+        _connectable = .init(from: connectableSource, updating: AutoConnectingSource.update)
     }
 
-    func update(_ value: Connectable<Model>) {
-        value.connected.map { model = $0.value }
+    nonisolated func update(_ value: Connectable<Model>) {
+        value.connected.map { state = $0.value }
     }
 }
 
-public extension Source where Model: ConnectableRepresentable  {
+public extension AnySource where Model: ConnectableRepresentable  {
     /// Converts a Source of a `Connectable<Value>` to a Source of the `Value` itself. Will automatically connect the origin Source's model when the Source is subscribed to or the model is accessed.
-    func autoConnecting() -> Source<Model.Value> {
-        AutoConnectingSource(map { $0.asConnectable() }).eraseToSource()
+    func autoConnecting() -> AnySource<Model.Value> {
+        AutoConnectingSource(map { $0.asConnectable() }).eraseToAnySource()
     }
 }

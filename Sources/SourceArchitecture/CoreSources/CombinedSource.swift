@@ -1,8 +1,7 @@
 //
-//  CombinedSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,33 +26,33 @@ import Foundation
 
 
 /// Combines the latest value from two Sources into a single tuple value each time each Source updates
-private final class CombinedSource<First, Second>: SourceOf<(First, Second)> {
+private final class CombinedSource<First, Second>: Source<(First, Second)> {
 
-    @Source var first: First
-    @Source var second: Second
+    @Sourced var first: First
+    @Sourced var second: Second
 
-    lazy var initialModel: (First, Second) = {
-        _first.subscribe(self, method: CombinedSource.updateFirst)
-        _second.subscribe(self, method: CombinedSource.updateSecond)
-        return model
+    lazy var initialState: (First, Second) = {
+        updateFirst(first: first)
+        updateSecond(second: second)
+        return state
     }()
 
-    init(first: Source<First>, second: Source<Second>) {
-        _first = first
-        _second = second
+    init(first: AnySource<First>, second: AnySource<Second>) {
+        _first = .init(from: first, updating: CombinedSource.updateFirst)
+        _second = .init(from: second, updating: CombinedSource.updateSecond)
     }
 
     func updateFirst(first: First) {
-        model = (first, second)
+        state = (first, second)
     }
 
     func updateSecond(second: Second) {
-        model = (first, second)
+        state = (first, second)
     }
 }
 
-public extension Source {
-    func combined<T>(with source: Source<T>) -> Source<(Model, T)> {
-        CombinedSource(first: self, second: source).eraseToSource()
+public extension AnySource {
+    func combined<T>(with source: AnySource<T>) -> AnySource<(Model, T)> {
+        CombinedSource(first: self, second: source).eraseToAnySource()
     }
 }

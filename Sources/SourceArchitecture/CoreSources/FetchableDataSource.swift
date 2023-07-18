@@ -1,8 +1,7 @@
 //
-//  FetchableDataSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +25,7 @@
 import Foundation
 
 
-private final class _FetchableDataSource: SourceOf<Fetchable<Data>> {
+private final class _FetchableDataSource: Source<Fetchable<Data>> {
 
     @ActionFromMethod(retry) var retryAction
     @ActionFromMethod(refresh) var refreshAction
@@ -36,7 +35,7 @@ private final class _FetchableDataSource: SourceOf<Fetchable<Data>> {
 
     let urlRequest: URLRequest
 
-    lazy var initialModel: Fetchable<Data> = .fetching(.init(progress: ProgressSource(fetch().progress).eraseToSource()))
+    lazy var initialState: Fetchable<Data> = .fetching(.init(progress: ProgressSource(self.fetch().progress).eraseToAnySource()))
 
     init(urlRequest: URLRequest) {
         self.urlRequest = urlRequest
@@ -48,14 +47,14 @@ private final class _FetchableDataSource: SourceOf<Fetchable<Data>> {
             if let data = data {
                 if (response as? HTTPURLResponse)?.statusCode == 429 {
                     self.failedAttempts += 1
-                    self.model = .failure(.init(error: NSError(domain: "Network", code: 429), failedAttempts: self.failedAttempts, retry: self.retryAction))
+                    self.state = .failure(.init(error: NSError(domain: "Network", code: 429), failedAttempts: self.failedAttempts, retry: self.retryAction))
                     return
                 }
                 self.failedAttempts = 0
-                self.model = .fetched(.init(value: data, refresh: self.refreshAction))
+                self.state = .fetched(.init(value: data, refresh: self.refreshAction))
             } else {
                 self.failedAttempts += 1
-                self.model = .failure(.init(error: error!, failedAttempts: self.failedAttempts, retry: self.retryAction))
+                self.state = .failure(.init(error: error!, failedAttempts: self.failedAttempts, retry: self.retryAction))
             }
         }
         self.dataTask = dataTask
@@ -65,7 +64,7 @@ private final class _FetchableDataSource: SourceOf<Fetchable<Data>> {
 
     func retry() {
         let dataTask = fetch()
-        model = .fetching(.init(progress: ProgressSource(dataTask.progress).eraseToSource()))
+        state = .fetching(.init(progress: ProgressSource(dataTask.progress).eraseToAnySource()))
     }
 
     func refresh() {
@@ -73,13 +72,13 @@ private final class _FetchableDataSource: SourceOf<Fetchable<Data>> {
     }
 }
 
-public extension Source where Model: FetchableWithPlaceholderRepresentable, Model.Value == Data {
+public extension AnySource where Model: FetchableWithPlaceholderRepresentable, Model.Value == Data {
 
-    func jsonDecoded<T: Decodable>() -> Source<FetchableWithPlaceholder<T, Model.Placeholder>> {
+    func jsonDecoded<T: Decodable>() -> AnySource<FetchableWithPlaceholder<T, Model.Placeholder>> {
         self.decoded { try JSONDecoder().decode(T.self, from: $0) }
     }
 
-    func decoded<T>(using decoder: @escaping (Data) throws -> T) -> Source<FetchableWithPlaceholder<T, Model.Placeholder>> {
+    func decoded<T>(using decoder: @escaping (Data) throws -> T) -> AnySource<FetchableWithPlaceholder<T, Model.Placeholder>> {
         var failedAttempts = 0
         return map {
             switch $0.asFetchableWithPlaceholder() {
@@ -101,14 +100,14 @@ public extension Source where Model: FetchableWithPlaceholderRepresentable, Mode
     }
 }
 
-public extension Source where Model: FetchableRepresentable, Model.Value == Data {
+public extension AnySource where Model: FetchableRepresentable, Model.Value == Data {
     @_disfavoredOverload
-    func jsonDecoded<T: Decodable>() -> Source<Fetchable<T>> {
+    func jsonDecoded<T: Decodable>() -> AnySource<Fetchable<T>> {
         self.decoded() { try JSONDecoder().decode(T.self, from: $0) }
     }
 
     @_disfavoredOverload
-    func decoded<T>(using decoder: @escaping (Data) throws -> T) -> Source<Fetchable<T>> {
+    func decoded<T>(using decoder: @escaping (Data) throws -> T) -> AnySource<Fetchable<T>> {
         var failedAttempts = 0
         return map {
             switch $0.asFetchable() {
@@ -133,6 +132,6 @@ public extension Source where Model: FetchableRepresentable, Model.Value == Data
 /// Create a Source that fetches Data from a URLRequest
 public final class FetchableDataSource: ComposedSource<Fetchable<Data>> {
     public init(urlRequest: URLRequest) {
-        super.init { _FetchableDataSource(urlRequest: urlRequest).eraseToSource() }
+        super.init { _FetchableDataSource(urlRequest: urlRequest).eraseToAnySource() }
     }
 }

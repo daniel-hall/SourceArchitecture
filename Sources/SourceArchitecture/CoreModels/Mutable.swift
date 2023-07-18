@@ -1,8 +1,7 @@
 //
-//  Mutable.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +25,6 @@
 import Foundation
 
 
-@dynamicMemberLookup
 /// A Model that contains a value and an action to set a new value
 public struct Mutable<Value> {
     public let value: Value
@@ -34,9 +32,6 @@ public struct Mutable<Value> {
     public init(value: Value, set: Action<Value>) {
         self.value = value
         self.set = set
-    }
-    public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-        value[keyPath: keyPath]
     }
 }
 

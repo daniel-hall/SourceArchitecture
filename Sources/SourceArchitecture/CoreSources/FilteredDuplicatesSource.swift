@@ -1,8 +1,7 @@
 //
-//  FilteredDuplicatesSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,43 +26,40 @@ import Foundation
 
 
 /// A Source that will not publish an update if the new value is the same as the last value (based on the provided closure to check equality)
-private final class FilteredDuplicatesSource<Model>: SourceOf<Model> {
+private final class FilteredDuplicatesSource<Model>: Source<Model> {
 
-    @Source var input: CurrentAndPrevious<Model>
+    @Sourced var input: CurrentAndPrevious<Model>
 
     let isDuplicate: (Model, Model) -> Bool
 
-    lazy var initialModel = {
-        _input.subscribe(self, method: FilteredDuplicatesSource.update, sendInitialModel: false)
-        return input.current
-    }()
+    lazy var initialState = input.current
 
-    init(input: Source<Model>, isDuplicate: @escaping (Model, Model) -> Bool) {
-        _input = input.currentAndPrevious()
+    init(input: AnySource<Model>, isDuplicate: @escaping (Model, Model) -> Bool) {
+        _input = .init(from: input.currentAndPrevious(), updating: FilteredDuplicatesSource.update)
         self.isDuplicate = isDuplicate
     }
 
     func update(value: CurrentAndPrevious<Model>) {
         if let previous = value.previous {
             if !isDuplicate(previous, value.current) {
-                model = value.current
+                state = value.current
             }
         } else {
-            model = value.current
+            state = value.current
         }
     }
 }
 
-public extension Source where Model: Equatable {
+public extension AnySource where Model: Equatable {
     /// Returns a Source which filters all duplicate values from this Source and publishes all non-duplicate values
-    func filteringDuplicates() -> Source<Model> {
-        FilteredDuplicatesSource(input: self, isDuplicate: { $0 == $1 } ).eraseToSource()
+    func filteringDuplicates() -> AnySource<Model> {
+        FilteredDuplicatesSource(input: self, isDuplicate: { $0 == $1 } ).eraseToAnySource()
     }
 }
 
-public extension Source {
+public extension AnySource {
     /// Returns a Source which filters all duplicate values from this Source using the provided `isDuplicate` function and publishes all non-duplicate values
-    func filteringDuplicates(using isDuplicate: @escaping (Model, Model) -> Bool) -> Source<Model> {
-        FilteredDuplicatesSource(input: self, isDuplicate: isDuplicate).eraseToSource()
+    func filteringDuplicates(using isDuplicate: @escaping (Model, Model) -> Bool) -> AnySource<Model> {
+        FilteredDuplicatesSource(input: self, isDuplicate: isDuplicate).eraseToAnySource()
     }
 }

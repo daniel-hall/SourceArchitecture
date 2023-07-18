@@ -27,68 +27,66 @@
 import SourceArchitecture
 import SwiftUI
 
-internal final class ToDoItemViewSource: SourceOf<ToDoItemView.Model> {
+internal final class ToDoItemViewSource: Source<ToDoItemView.Model> {
     @ActionFromMethod(delete) private var deleteAction
     @ActionFromMethod(setCompleted) private var setCompletedAction
 
-    internal lazy var initialModel = ToDoItemView.Model(id: saved.model.id,
+    internal lazy var initialState = ToDoItemView.Model(id: saved.value.id,
                                                         description: .init(source: self,
                                                                            keyPath: \.description),
-                                                        isCompleted: saved.model.dateCompleted != nil,
+                                                        isCompleted: saved.value.dateCompleted != nil,
                                                         setCompleted: setCompletedAction,
                                                         delete: deleteAction)
 
-    private let saved: Source<Mutable<ToDoItem>>
+    @Sourced private var saved: Mutable<ToDoItem>
 
     private var description: String {
         get {
-            saved.model.description
+            saved.value.description
         }
         set {
             setDescription(newValue)
         }
     }
 
-    internal init(_ saved: Source<Mutable<ToDoItem>>) {
-        self.saved = saved.filteringDuplicates()
-        super.init()
-        self.saved.subscribe(self, method: ToDoItemViewSource.saveUpdated, sendInitialModel: false)
+    internal init(_ saved: AnySource<Mutable<ToDoItem>>) {
+        _saved = .init(from: saved.filteringDuplicates(), updating: ToDoItemViewSource.saveUpdated)
     }
 
     private func saveUpdated(value: Mutable<ToDoItem>) {
-        model = .init(id: value.id,
+        state = .init(id: value.id,
                       description: .init(source: self, keyPath: \.description),
-                      isCompleted: value.dateCompleted != nil,
+                      isCompleted: value.value.dateCompleted != nil,
                       setCompleted: setCompletedAction,
                       delete: deleteAction)
     }
 
     private func setDescription(_ description: String) {
-        guard description != saved.model.description else { return }
-        saved.model.set(
-            .init(id: model.id,
+        guard description != saved.value.description else { return }
+        saved.set(
+            .init(id: state.id,
                   description: description.replacingOccurrences(of: "\n", with: ""),
-                  dateCompleted: saved.model.dateCompleted,
-                  isDeleted: saved.model.isDeleted)
+                  dateCompleted: saved.value.dateCompleted,
+                  isDeleted: saved.value.isDeleted)
         )
     }
 
     private func delete() {
-        saved.model.set(
-            .init(id: model.id,
-                  description: model.description,
-                  dateCompleted: saved.model.dateCompleted,
+        saved.set(
+            .init(id: state.id,
+                  description: state.description,
+                  dateCompleted: saved.value.dateCompleted,
                   isDeleted: true)
         )
     }
 
     private func setCompleted(_ isCompleted: Bool) {
         let dateCompleted: Date? = isCompleted ? .now : nil
-        saved.model.set(
-            .init(id: model.id,
-                  description: model.description,
+        saved.set(
+            .init(id: state.id,
+                  description: state.description,
                   dateCompleted: dateCompleted,
-                  isDeleted: saved.model.isDeleted)
+                  isDeleted: saved.value.isDeleted)
         )
     }
 }

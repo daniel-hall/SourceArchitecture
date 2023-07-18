@@ -23,7 +23,7 @@
                location = "group:CombinedSource.swift">
             </FileRef>
             <FileRef
-               location = "group:CombinePublisherSource.swift">
+               location = "group:ComposedSource.swift">
             </FileRef>
             <FileRef
                location = "group:ConnectableSource.swift">
@@ -35,7 +35,7 @@
                location = "group:FetchableDataSource.swift">
             </FileRef>
             <FileRef
-               location = "group:/Users/danielhall/Documents/Projects/SourceArchitectureRefresh/Sources/SourceArchitecture/CoreSources/FetchAfterDelaySource.swift">
+               location = "group:FetchAfterDelaySource.swift">
             </FileRef>
             <FileRef
                location = "group:FilteredDuplicatesSource.swift">
@@ -56,6 +56,9 @@
                location = "group:NetworkSyncedPersistableSource.swift">
             </FileRef>
             <FileRef
+               location = "group:PersistedInMemorySource.swift">
+            </FileRef>
+            <FileRef
                location = "group:PersistedFetchedSource.swift">
             </FileRef>
             <FileRef
@@ -69,6 +72,9 @@
             </FileRef>
             <FileRef
                location = "group:RetryingSource.swift">
+            </FileRef>
+            <FileRef
+               location = "group:SingleValueSource.swift">
             </FileRef>
          </Group>
          <Group

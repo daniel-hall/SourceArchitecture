@@ -1,8 +1,7 @@
 //
-//  RefreshingSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,21 +26,21 @@ import Foundation
 
 
 /// A Source that will automatically refresh its Fetched value using a specified interval.
-private final class RefreshingSource<Value>: SourceOf<Fetchable<Value>> {
+private final class RefreshingSource<Value>: Source<Fetchable<Value>> {
 
-    @Threadsafe var refreshWorkItem: DispatchWorkItem?
-    @Source var fetchableValue: Fetchable<Value>
+    var refreshWorkItem: DispatchWorkItem?
+    @Sourced var fetchableValue: Fetchable<Value>
 
     let refreshInterval: TimeInterval
 
-    lazy var initialModel = {
-        _fetchableValue.subscribe(self, method: RefreshingSource.sourceUpdate)
-        return model
+    lazy var initialState = {
+        sourceUpdate(value: fetchableValue)
+        return state
     }()
     
-    init(source: Source<Fetchable<Value>>, interval: TimeInterval) {
+    init(source: AnySource<Fetchable<Value>>, interval: TimeInterval) {
         refreshInterval = interval
-        _fetchableValue = source
+        _fetchableValue = .init(from: source, updating: RefreshingSource.sourceUpdate)
         super.init()
         let workItem = DispatchWorkItem { [weak self] in self?.update() }
         refreshWorkItem = workItem
@@ -49,7 +48,7 @@ private final class RefreshingSource<Value>: SourceOf<Fetchable<Value>> {
     }
     
     func sourceUpdate(value: Fetchable<Value>) {
-        self.model = value
+        self.state = value
     }
     
     func update() {
@@ -61,16 +60,16 @@ private final class RefreshingSource<Value>: SourceOf<Fetchable<Value>> {
     }
 }
 
-public extension Source where Model: FetchableWithPlaceholderRepresentable {
+public extension AnySource where Model: FetchableWithPlaceholderRepresentable {
     /// Automatically refreshes / polls the Fetchable value at the specified interval
-    func refreshing(every interval: TimeInterval) -> Source<FetchableWithPlaceholder<Model.Value, Model.Placeholder>> {
-        RefreshingSource(source: map { $0.asFetchableWithPlaceholder().asFetchable() }, interval: interval).eraseToSource().addingPlaceholder().mapFetchablePlaceholder { self.model.asFetchableWithPlaceholder().placeholder }
+    func refreshing(every interval: TimeInterval) -> AnySource<FetchableWithPlaceholder<Model.Value, Model.Placeholder>> {
+        RefreshingSource(source: map { $0.asFetchableWithPlaceholder().asFetchable() }, interval: interval).eraseToAnySource().addingPlaceholder().mapFetchablePlaceholder { self.state.asFetchableWithPlaceholder().placeholder }
     }
 }
 
-public extension Source where Model: FetchableRepresentable {
+public extension AnySource where Model: FetchableRepresentable {
     /// Automatically refreshes / polls the Fetchable value at the specified interval
-    @_disfavoredOverload func refreshing(every interval: TimeInterval) -> Source<Fetchable<Model.Value>> {
-        RefreshingSource(source: map { $0.asFetchable() }, interval: interval).eraseToSource()
+    @_disfavoredOverload func refreshing(every interval: TimeInterval) -> AnySource<Fetchable<Model.Value>> {
+        RefreshingSource(source: map { $0.asFetchable() }, interval: interval).eraseToAnySource()
     }
 }

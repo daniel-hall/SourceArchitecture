@@ -32,7 +32,7 @@ import ToDoList
 /// Pass in a FilePersistence Source for the dependency. Note that in a UI test scenario, a mock Persistable Source can be injected here instead
 struct AppDependencies: PersistableToDoListDependency {
     private let filePersistence = FilePersistence()
-    var persistedToDoList: Source<Persistable<ToDoList>> {
+    var persistedToDoList: AnySource<Persistable<ToDoList>> {
         let descriptor = FileDescriptor<ToDoList>(path: "ToDoList")
         return filePersistence.persistableSource(for: descriptor)
     }

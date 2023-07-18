@@ -1,8 +1,7 @@
 //
-//  CombinedFetchableSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +26,7 @@ import Foundation
 
 
 /// A Source that combines the result of two model states of Fetchable values. The CombinedFetchable source model will be .fetching if either input is still fetching, .error if either input returns an .error state, or will be .found if BOTH inputs are in a .found state.
-private final class CombinedFetchableSource<First, Second>: SourceOf<Fetchable<(First, Second)>> {
+private final class CombinedFetchableSource<First, Second>: Source<Fetchable<(First, Second)>> {
 
     @ActionFromMethod(refresh) var refreshAction
     @ActionFromMethod(retry) var retryAction
@@ -36,18 +35,18 @@ private final class CombinedFetchableSource<First, Second>: SourceOf<Fetchable<(
     @Threadsafe var firstHasRefreshed = true
     @Threadsafe var secondHasRefreshed = false
 
-    @Source var first: Fetchable<First>
-    @Source var second: Fetchable<Second>
+    @Sourced var first: Fetchable<First>
+    @Sourced var second: Fetchable<Second>
 
-    lazy var initialModel = {
-        _first.subscribe(self, method: CombinedFetchableSource.updateFirst)
-        _second.subscribe(self, method: CombinedFetchableSource.updateSecond)
-        return model
-    }()
+    lazy var initialState: Fetchable<(First, Second)> = .fetching(.init(progress: nil))
 
-    init(first: Source<Fetchable<First>>, second: Source<Fetchable<Second>>) {
-        _first = first
-        _second = second
+    init(first: AnySource<Fetchable<First>>, second: AnySource<Fetchable<Second>>) {
+        _first = .init(from: first, updating: CombinedFetchableSource.updateFirst)
+        _second = .init(from: second, updating: CombinedFetchableSource.updateSecond)
+    }
+
+    func onStart() {
+        updateIfNeeded()
     }
 
     func updateFirst(value: Fetchable<First>) {
@@ -69,7 +68,7 @@ private final class CombinedFetchableSource<First, Second>: SourceOf<Fetchable<(
     func updateIfNeeded() {
         switch (first, second) {
         case (.fetching(let firstFetching), .fetching(let secondFetching)):
-            let combinedProgress: Source<Progress>?
+            let combinedProgress: AnySource<Progress>?
             if let firstProgress = firstFetching.progress, let secondProgress = secondFetching.progress {
                 combinedProgress = firstProgress.combined(with: secondProgress).map {
                     let combinedEstimate = ($0.estimatedTimeRemaining, $1.estimatedTimeRemaining)
@@ -78,34 +77,34 @@ private final class CombinedFetchableSource<First, Second>: SourceOf<Fetchable<(
             } else {
                 combinedProgress = firstFetching.progress ?? secondFetching.progress
             }
-            model = .fetching(.init(progress: combinedProgress))
+            state = .fetching(.init(progress: combinedProgress))
         case (.fetched(let firstFetched), .fetched(let secondFetched)):
             let firstHasRefreshed = firstHasRefreshed
             let secondHasRefreshed = secondHasRefreshed
             guard firstHasRefreshed && secondHasRefreshed else {
                 return
             }
-            model = .fetched(.init(value: (firstFetched.value, secondFetched.value), refresh: refreshAction))
+            state = .fetched(.init(value: (firstFetched.value, secondFetched.value), refresh: refreshAction))
         case (.failure(let failure), _):
-            if case .failure(let existing) = model, existing.error.localizedDescription == failure.error.localizedDescription && existing.failedAttempts == failure.failedAttempts {
+            if case .failure(let existing) = state, existing.error.localizedDescription == failure.error.localizedDescription && existing.failedAttempts == failure.failedAttempts {
                 return
             }
-            model = .failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: retryAction))
+            state = .failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: retryAction))
         case (_, .failure(let failure)):
-            if case .failure(let existing) = model, existing.error.localizedDescription == failure.error.localizedDescription && existing.failedAttempts == failure.failedAttempts {
+            if case .failure(let existing) = state, existing.error.localizedDescription == failure.error.localizedDescription && existing.failedAttempts == failure.failedAttempts {
                 return
             }
-            model = .failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: retryAction))
+            state = .failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: retryAction))
         case (.fetching(let fetching), _):
-            if case .fetching = model {
+            if case .fetching = state {
                 return
             }
-            model = .fetching(.init(progress: fetching.progress))
+            state = .fetching(.init(progress: fetching.progress))
         case (_, .fetching(let fetching)):
-            if case .fetching = model {
+            if case .fetching = state {
                 return
             }
-            model = .fetching(.init(progress: fetching.progress))
+            state = .fetching(.init(progress: fetching.progress))
         }
     }
 
@@ -125,22 +124,22 @@ private final class CombinedFetchableSource<First, Second>: SourceOf<Fetchable<(
 }
 
 
-public extension Source where Model: FetchableWithPlaceholderRepresentable & FetchableRepresentable {
-    func combinedFetch<Value>(with source: Source<Fetchable<Value>>) -> Source<FetchableWithPlaceholder<(Model.Value, Value), Model.Placeholder>> {
-        (combinedFetch(with: source) as Source<Fetchable<(Model.Value, Value)>>).addingPlaceholder(self.model.asFetchableWithPlaceholder().placeholder)
+public extension AnySource where Model: FetchableWithPlaceholderRepresentable & FetchableRepresentable {
+    func combinedFetch<Value>(with source: AnySource<Fetchable<Value>>) -> AnySource<FetchableWithPlaceholder<(Model.Value, Value), Model.Placeholder>> {
+        (combinedFetch(with: source) as AnySource<Fetchable<(Model.Value, Value)>>).addingPlaceholder(self.state.asFetchableWithPlaceholder().placeholder)
     }
     
-    func combinedFetch<Value, Placeholder>(with source: Source<FetchableWithPlaceholder<Value, Placeholder>>) -> Source<FetchableWithPlaceholder<(Model.Value, Value), (Model.Placeholder, Placeholder)>> {
-        CombinedFetchableSource(first: map { $0.asFetchable() }, second: source.map { $0.asFetchable() }).eraseToSource().addingPlaceholder((self.model.asFetchableWithPlaceholder().placeholder, source.model.asFetchableWithPlaceholder().placeholder))
+    func combinedFetch<Value, Placeholder>(with source: AnySource<FetchableWithPlaceholder<Value, Placeholder>>) -> AnySource<FetchableWithPlaceholder<(Model.Value, Value), (Model.Placeholder, Placeholder)>> {
+        CombinedFetchableSource(first: map { $0.asFetchable() }, second: source.map { $0.asFetchable() }).eraseToAnySource().addingPlaceholder((self.state.asFetchableWithPlaceholder().placeholder, source.state.asFetchableWithPlaceholder().placeholder))
     }
     
-    func combinedFetch<Value, Placeholder>(with source: Source<FetchableWithPlaceholder<Value, Placeholder>>) -> Source<FetchableWithPlaceholder<(Model.Value, Value), Model.Placeholder>> where Placeholder == Model.Placeholder {
-        CombinedFetchableSource(first: map { $0.asFetchable() }, second: source.map { $0.asFetchable() }).eraseToSource().addingPlaceholder(self.model.asFetchableWithPlaceholder().placeholder)
+    func combinedFetch<Value, Placeholder>(with source: AnySource<FetchableWithPlaceholder<Value, Placeholder>>) -> AnySource<FetchableWithPlaceholder<(Model.Value, Value), Model.Placeholder>> where Placeholder == Model.Placeholder {
+        CombinedFetchableSource(first: map { $0.asFetchable() }, second: source.map { $0.asFetchable() }).eraseToAnySource().addingPlaceholder(self.state.asFetchableWithPlaceholder().placeholder)
     }
 }
 
-public extension Source where Model: FetchableRepresentable {
-    @_disfavoredOverload func combinedFetch<Value>(with source: Source<Fetchable<Value>>) -> Source<Fetchable<(Model.Value, Value)>> {
-        CombinedFetchableSource(first: map { $0.asFetchable() }, second: source).eraseToSource()
+public extension AnySource where Model: FetchableRepresentable {
+    @_disfavoredOverload func combinedFetch<Value>(with source: AnySource<Fetchable<Value>>) -> AnySource<Fetchable<(Model.Value, Value)>> {
+        CombinedFetchableSource(first: map { $0.asFetchable() }, second: source).eraseToAnySource()
     }
 }

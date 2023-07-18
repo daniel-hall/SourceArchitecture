@@ -10,16 +10,7 @@ let package = Package(
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
             name: "SourceArchitecture",
-            targets: ["SourceArchitecture"]),
-        .library(
-            name: "SourceArchitectureStatic",
-            type: .static,
-            targets: ["SourceArchitecture"]),
-        .library(
-            name: "SourceArchitectureDynamic",
-            type: .dynamic,
-            targets: ["SourceArchitecture"]),
-
+            targets: ["SourceArchitecture"])
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.

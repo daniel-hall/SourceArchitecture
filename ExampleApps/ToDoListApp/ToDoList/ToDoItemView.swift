@@ -43,7 +43,7 @@ public extension ToDoItemView {
 public struct ToDoItemView: View, Renderer {
 
     @FocusState<String?>.Binding fileprivate var focus: String?
-    @Source public var model: Model
+    @Sourced public var model: Model
     @Binding var isNew: Bool
     @State var scroll = DispatchWorkItem { }
     
@@ -61,9 +61,9 @@ public struct ToDoItemView: View, Renderer {
         }
     }
 
-    init(source: Source<Model>, isNew: Binding<Bool>?, proxy: ScrollViewProxy?, focus: FocusState<String?>.Binding) {
+    init(source: AnySource<Model>, isNew: Binding<Bool>?, proxy: ScrollViewProxy?, focus: FocusState<String?>.Binding) {
         self.proxy = proxy
-        _model = source
+        _model = .init(from: source)
         _focus = focus
         _isNew = isNew ?? .init(get: { false }, set: { _ in })
     }

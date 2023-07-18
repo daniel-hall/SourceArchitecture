@@ -1,8 +1,7 @@
 //
-//  NetworkSyncedPersistedSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -34,43 +33,41 @@ public protocol Versioned {
     var version: Version { get }
 }
 
-private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<Persistable<Value>> {
+private final class _NetworkSyncedPersistableSource<Value: Versioned>: Source<Persistable<Value>>, @unchecked Sendable {
 
     @ActionFromMethod(set) var setAction
     @ActionFromMethod(clear) var clearAction
 
-    @Threadsafe var currentFetchableValue: Source<Fetchable<Value>>?
-    @Threadsafe var currentFetchableOptionalValue: Source<Fetchable<Value?>>?
+    @Sourced(updating: handleFetchableValue) var currentFetchableValue: Fetchable<Value>?
+    @Sourced(updating: handleFetchableOptionalValue) var currentFetchableOptionalValue: Fetchable<Value?>?
 
-    @Source var persisted: CurrentAndPrevious<Persistable<Value>>
+    @Sourced var persisted: CurrentAndPrevious<Persistable<Value>>
     
-    let get: () -> Source<Fetchable<Value?>>
-    let create: (Value) -> Source<Fetchable<Value>>
-    let update: (Value) -> Source<Fetchable<Value>>
-    let delete: (Value) -> Source<Fetchable<Value>>
+    let get: () -> AnySource<Fetchable<Value?>>
+    let create: (Value) -> AnySource<Fetchable<Value>>
+    let update: (Value) -> AnySource<Fetchable<Value>>
+    let delete: (Value) -> AnySource<Fetchable<Value>>
 
-    lazy var initialModel = {
-        _persisted.subscribe(self, method: _NetworkSyncedPersistableSource.handlePersistenceUpdate)
-        currentFetchableOptionalValue = get()
-        currentFetchableOptionalValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableOptionalValue)
-        return model
+    lazy var initialState = {
+        _currentFetchableOptionalValue.setSource(get())
+        return state
     }()
 
-    init(persisted: Source<Persistable<Value>>, get: @escaping () -> Source<Fetchable<Value?>>, create: @escaping (Value) -> Source<Fetchable<Value>>, update: @escaping (Value) -> Source<Fetchable<Value>>, delete: @escaping (Value) -> Source<Fetchable<Value>>) {
-        _persisted = persisted.currentAndPrevious()
+    init(persisted: AnySource<Persistable<Value>>, get: @escaping () -> AnySource<Fetchable<Value?>>, create: @escaping (Value) -> AnySource<Fetchable<Value>>, update: @escaping (Value) -> AnySource<Fetchable<Value>>, delete: @escaping (Value) -> AnySource<Fetchable<Value>>) {
+        _persisted = .init(from: persisted.currentAndPrevious(), updating: _NetworkSyncedPersistableSource.handlePersistenceUpdate)
         self.get = get
         self.create = create
         self.update = update
         self.delete = delete
         super.init()
         #if canImport(UIKit)
-            NotificationCenter.default.addObserver(self, selector: #selector(didBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
         #endif
+        handlePersistenceUpdate(update: self.persisted)
     }
 
     @objc func didBecomeActive() {
-        currentFetchableOptionalValue = get()
-        currentFetchableOptionalValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableOptionalValue)
+        _currentFetchableOptionalValue.setSource(get())
     }
 
     func handleFetchableOptionalValue(value: Fetchable<Value?>) {
@@ -82,25 +79,23 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
                     if persisted.current.notFound != nil, persisted.previous?.found != nil {
                         return
                     }
-                    persisted.set(value)
+                    persisted.current.set(value)
                     return
                 }
-                if value.version > found.version {
+                if value.version > found.value.version {
                     found.set(value)
-                } else if value.version < found.version {
-                    currentFetchableValue = self.update(value)
-                    currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
+                } else if value.version < found.value.version {
+                    _currentFetchableValue.setSource(self.update(value))
                 }
                 return
             }
             // If there is a nil response from the GET, then CREATE a synced record
             if let found = persisted.current.found {
-                currentFetchableValue = create(found.value)
-                currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
+                _currentFetchableValue.setSource(create(found.value))
             }
         case .failure(let failure):
             if let notFound = persisted.current.notFound, notFound.error?.localizedDescription != failure.error.localizedDescription {
-                self.model = .notFound(.init(error: failure.error, set: setAction))
+                self.state = .notFound(.init(error: failure.error, set: setAction))
                 DispatchQueue.global().asyncAfter(deadline: .now() + 20) {
                     failure.retry?()
                 }
@@ -119,25 +114,24 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
                 return
             }
             guard let found = persisted.current.found else {
-                persisted.set(fetched.value)
+                persisted.current.set(fetched.value)
                 return
             }
-            if fetched.value.version >= found.version {
-                persisted.set(fetched.value)
+            if fetched.value.version >= found.value.version {
+                persisted.current.set(fetched.value)
             } else {
-                currentFetchableValue = update(found.value)
-                currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
+                _currentFetchableValue.setSource(update(found.value))
             }
         }
     }
 
     func handlePersistenceUpdate(update: CurrentAndPrevious<Persistable<Value>>) {
         switch update.current {
-        case .found(let found): model = .found(.init(value: found.value, isExpired:  found.isExpired, set: setAction, clear: clearAction))
+        case .found(let found): state = .found(.init(value: found.value, isExpired:  found.isExpired, set: setAction, clear: clearAction))
         case .notFound(let notFound):
-            model = .notFound(.init(error: notFound.error, set: setAction))
+            state = .notFound(.init(error: notFound.error, set: setAction))
             if let previous = update.previous?.found?.value {
-                currentFetchableValue = delete(previous)
+                _ = delete(previous).state
             }
         }
     }
@@ -149,27 +143,26 @@ private final class _NetworkSyncedPersistableSource<Value: Versioned>: SourceOf<
         case .found(let found):
             if value.version > found.value.version {
                 persisted.current.set(value)
-                currentFetchableValue = self.update(value)
-                currentFetchableValue?.subscribe(self, method: _NetworkSyncedPersistableSource.handleFetchableValue)
+                _currentFetchableValue.setSource(self.update(value))
             }
         }
     }
 
     func clear() {
-        guard case .found(let found) = model else { return }
+        guard case .found(let found) = state else { return }
         persisted.current.clear?()
-        currentFetchableValue = delete(found.value)
+        _ = delete(found.value).state
     }
 }
 
 public final class NetworkSyncedPersistableSource<Value: Versioned>: ComposedSource<Persistable<Value>> {
     public init (
-        persisted: Source<Persistable<Value>>,
-        get: @escaping () -> Source<Fetchable<Value?>>,
-        create: @escaping (Value) -> Source<Fetchable<Value>>,
-        update: @escaping (Value) -> Source<Fetchable<Value>>,
-        delete: @escaping (Value) -> Source<Fetchable<Value>>
+        persisted: AnySource<Persistable<Value>>,
+        get: @escaping () -> AnySource<Fetchable<Value?>>,
+        create: @escaping (Value) -> AnySource<Fetchable<Value>>,
+        update: @escaping (Value) -> AnySource<Fetchable<Value>>,
+        delete: @escaping (Value) -> AnySource<Fetchable<Value>>
     ) {
-        super.init { _NetworkSyncedPersistableSource(persisted: persisted, get: get, create: create, update: update, delete: delete).eraseToSource() }
+        super.init { _NetworkSyncedPersistableSource(persisted: persisted, get: get, create: create, update: update, delete: delete).eraseToAnySource() }
     }
 }

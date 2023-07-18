@@ -35,7 +35,7 @@ struct MovieDetails {
     let id: Int
     let title: String
     let tagline: String?
-    let poster: Source<FetchableWithPlaceholder<UIImage, UIImage>>
+    let poster: AnySource<FetchableWithPlaceholder<UIImage, UIImage>>
     let description: String
     let releaseDate: String
     let budget: String
@@ -80,15 +80,15 @@ struct MovieCreditsResponse: Decodable {
 // MARK: - Dependencies -
 
 protocol FetchableMovieDetailsDependency {
-    func movieDetails(for movieID: Int) -> Source<Fetchable<MovieDetailsResponse>>
+    func movieDetails(for movieID: Int) -> AnySource<Fetchable<MovieDetailsResponse>>
 }
 
 protocol FetchableMovieCreditsDepedency {
-    func movieCredits(for movieID: Int) -> Source<Fetchable<MovieCreditsResponse>>
+    func movieCredits(for movieID: Int) -> AnySource<Fetchable<MovieCreditsResponse>>
 }
 
 protocol FetchableMoviePosterDependency {
-    func moviePoster(from url: URL) -> Source<Fetchable<UIImage>>
+    func moviePoster(from url: URL) -> AnySource<Fetchable<UIImage>>
 }
 
 /// This Source fetches data from two different APIs and transforms the results into a single app-specific model. Since it only applies operators to other Sources and manages no model or state of its own, it is a "ComposedSource"
@@ -98,10 +98,10 @@ final class MovieDetailsSource: ComposedSource<Fetchable<MovieDetails>> {
     init(dependencies: Dependencies) {
         super.init {
             // We flatMap from the selectedMovie, so every time the currently selected movie changes in the app, it triggers a new request to the two endpoints to get information for the currently selected movie
-            let combinedFetchedSource: Source<Fetchable<(MovieDetailsResponse, MovieCreditsResponse)>> = dependencies.selectedMovie.flatMap { [dependencies] in
+            let combinedFetchedSource: AnySource<Fetchable<(MovieDetailsResponse, MovieCreditsResponse)>> = dependencies.selectedMovie.flatMap { [dependencies] in
                 // combinedFetch will managed the fetching, failure, and fetched state from two different Sources and merge them into a single fetching, failure or fetched state that is a tuple of the Values from the original sources
                 guard let id = $0.value else {
-                    return Source(model: Fetchable<MovieDetailsResponse>.fetching(.init(progress: nil))).combinedFetch(with: .init(model: Fetchable<MovieCreditsResponse>.fetching(.init(progress: nil))))
+                    return SingleValueSource( Fetchable<MovieDetailsResponse>.fetching(.init(progress: nil))).eraseToAnySource().combinedFetch(with: SingleValueSource( Fetchable<MovieCreditsResponse>.fetching(.init(progress: nil))).eraseToAnySource())
                 }
                 return dependencies.movieDetails(for: id).combinedFetch(with: dependencies.movieCredits(for: id))
             }
@@ -110,9 +110,9 @@ final class MovieDetailsSource: ComposedSource<Fetchable<MovieDetails>> {
                 // If a poster path exists, create a URL to the full size image
                 let posterURL = details.poster_path.flatMap { URL(string: "https://image.tmdb.org/t/p/w500\($0)") }
                 // Create a Source for the fetched poster image. If there isn't a URL, return a failure with a placeholder image
-                let posterSource: Source<FetchableWithPlaceholder<UIImage, UIImage>> = posterURL.map { url in
+                let posterSource: AnySource<FetchableWithPlaceholder<UIImage, UIImage>> = posterURL.map { url in
                     dependencies.moviePoster(from: url).addingPlaceholder(UIImage(systemName: "photo")!)
-                } ?? .init(model: .failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No poster URL"]), failedAttempts: 1, retry: nil)))
+                } ?? SingleValueSource(.failure(.init(placeholder: UIImage(systemName: "photo")!, error: NSError(domain: #file + #function, code: 0, userInfo: [NSLocalizedDescriptionKey: "No poster URL"]), failedAttempts: 1, retry: nil))).eraseToAnySource()
                 let formatter = NumberFormatter()
                 formatter.numberStyle = .currency
 

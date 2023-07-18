@@ -1,8 +1,7 @@
 //
-//  CurrentAndPrevious.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +25,9 @@
 import Foundation
 
 
-@dynamicMemberLookup
 public struct CurrentAndPrevious<Value> {
     public let current: Value
     public let previous: Value?
-
-    public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-        current[keyPath: keyPath]
-    }
 }
 
 public protocol CurrentAndPreviousRepresentable {

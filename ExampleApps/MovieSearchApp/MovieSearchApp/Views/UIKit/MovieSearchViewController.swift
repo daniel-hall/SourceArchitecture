@@ -39,10 +39,10 @@ final class MovieSearchViewController: UIViewController, Renderer {
 
     private let searchController = UISearchController(searchResultsController: nil)
 
-    @Source var model: Fetchable<MovieSearch>
+    @Sourced var model: Fetchable<MovieSearch>
 
-    init?(source: Source<Fetchable<MovieSearch>>, coder: NSCoder) {
-        _model = source
+    init?(source: AnySource<Fetchable<MovieSearch>>, coder: NSCoder) {
+        _model = .init(from: source)
         super.init(coder: coder)
     }
 
@@ -79,8 +79,8 @@ final class MovieSearchViewController: UIViewController, Renderer {
             retryButton.isHidden = failure.retry == nil
         case .fetched(let fetched):
             searchController.searchResultsUpdater = nil
-            searchController.searchBar.text = fetched.currentSearchTerm
-            noResultsView.isHidden = !fetched.results.isEmpty
+            searchController.searchBar.text = fetched.value.currentSearchTerm
+            noResultsView.isHidden = !fetched.value.results.isEmpty
             tableView.reloadData()
         }
     }
@@ -96,27 +96,27 @@ final class MovieSearchViewController: UIViewController, Renderer {
 
 extension MovieSearchViewController: UISearchBarDelegate {
     func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
-        model.fetched?.search(searchBar.text)
+        model.fetched?.value.search(searchBar.text)
     }
 }
 
 extension MovieSearchViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return model.fetched?.results.count ?? 0
+        return model.fetched?.value.results.count ?? 0
     }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: "movieCell", for: indexPath) as? MovieCell, let results = self.model.fetched?.results, indexPath.row < results.count else {
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "movieCell", for: indexPath) as? MovieCell, let results = self.model.fetched?.value.results, indexPath.row < results.count else {
             return UITableViewCell()
         }
-        cell.setModel(.init(model: results[indexPath.row]))
+        cell.setModel(SingleValueSource(results[indexPath.row]).eraseToAnySource())
         return cell
     }
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
-        if let cell = cell as? MovieCell, let results = self.model.fetched?.results, results.count > indexPath.row {
-            cell.setModel(.init(model: results[indexPath.row]))
+        if let cell = cell as? MovieCell, let results = self.model.fetched?.value.results, results.count > indexPath.row {
+            cell.setModel(SingleValueSource(results[indexPath.row]).eraseToAnySource())
             if indexPath.row > results.count - 10  {
-                model.fetched?.loadMore?()
+                model.fetched?.value.loadMore?()
             }
         }
     }
@@ -124,7 +124,7 @@ extension MovieSearchViewController: UITableViewDataSource {
 
 extension MovieSearchViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        model.fetched?.results[indexPath.row].select()
+        model.fetched?.value.results[indexPath.row].select()
     }
 }
 
@@ -135,18 +135,16 @@ final class MovieCell: UITableViewCell, Renderer {
     @IBOutlet var date: UILabel!
     @IBOutlet var movieDescription: UILabel!
     @IBOutlet var poster: UIImageView!
-    @Source var model: MovieSearch.Result?
-    @Source var thumbnail: FetchableWithPlaceholder<UIImage, UIImage>?
+    @Sourced() var model: MovieSearch.Result?
+    @Sourced() var thumbnail: FetchableWithPlaceholder<UIImage, UIImage>?
 
     required init?(coder: NSCoder) {
-        _model = .init(model: nil)
-        _thumbnail = .init(model: nil)
         super.init(coder: coder)
     }
 
-    func setModel(_ source: Source<MovieSearch.Result>) {
-        _model = source.optional()
-        _thumbnail = source.model.thumbnail.optional()
+    func setModel(_ source: AnySource<MovieSearch.Result>) {
+        _model.setSource(source)
+        _thumbnail.setSource(source.state.thumbnail)
         render()
     }
 

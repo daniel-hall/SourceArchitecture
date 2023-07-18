@@ -1,8 +1,7 @@
 //
-//  FetchableWithPlaceholder.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -55,15 +54,14 @@ public enum FetchableWithPlaceholder<Value, Placeholder> {
     }
     
     public struct Fetching {
-        public let progress: Source<Progress>?
+        public let progress: AnySource<Progress>?
         public let placeholder: Placeholder
-        public init(placeholder: Placeholder, progress: Source<Progress>?) {
+        public init(placeholder: Placeholder, progress: AnySource<Progress>?) {
             self.placeholder = placeholder
             self.progress = progress
         }
     }
     
-    @dynamicMemberLookup
     public struct Fetched {
         public let refresh: Action<Void>?
         public let value: Value
@@ -72,14 +70,6 @@ public enum FetchableWithPlaceholder<Value, Placeholder> {
             self.placeholder = placeholder
             self.value = value
             self.refresh = refresh
-        }
-        
-        public subscript<T>(dynamicMember keyPath: KeyPath<Value, T>) -> T {
-            value[keyPath: keyPath]
-        }
-        
-        public subscript<T, V>(dynamicMember keyPath: KeyPath<V, T>) -> T? where Value == Optional<V> {
-            value?[keyPath: keyPath]
         }
     }
     
@@ -169,22 +159,22 @@ public protocol FetchableWithPlaceholderRepresentable {
     func asFetchableWithPlaceholder() -> FetchableWithPlaceholder<Value, Placeholder>
 }
 
-public extension Source where Model: FetchableRepresentable {
-    func addingPlaceholder<T>(_ placeholder: T) -> Source<FetchableWithPlaceholder<Model.Value, T>> {
+public extension AnySource where Model: FetchableRepresentable {
+    func addingPlaceholder<T>(_ placeholder: T) -> AnySource<FetchableWithPlaceholder<Model.Value, T>> {
         map { $0.asFetchable().addingPlaceholder(placeholder) }
     }
     
-    func addingPlaceholder() -> Source<FetchableWithPlaceholder<Model.Value, Void>> {
+    func addingPlaceholder() -> AnySource<FetchableWithPlaceholder<Model.Value, Void>> {
         addingPlaceholder(())
     }
 }
 
-public extension Source where Model: FetchableWithPlaceholderRepresentable {
-    func mapFetchedValue<NewValue>(_ transform: @escaping (Model.Value) -> NewValue) -> Source<FetchableWithPlaceholder<NewValue, Model.Placeholder>> {
+public extension AnySource where Model: FetchableWithPlaceholderRepresentable {
+    func mapFetchedValue<NewValue>(_ transform: @escaping (Model.Value) -> NewValue) -> AnySource<FetchableWithPlaceholder<NewValue, Model.Placeholder>> {
         map { $0.asFetchableWithPlaceholder().map(transform) }
     }
     
-    func mapFetchablePlaceholder<NewPlaceholder>(_ transform: @escaping (Model.Placeholder) -> NewPlaceholder) -> Source<FetchableWithPlaceholder<Model.Value, NewPlaceholder>> {
+    func mapFetchablePlaceholder<NewPlaceholder>(_ transform: @escaping (Model.Placeholder) -> NewPlaceholder) -> AnySource<FetchableWithPlaceholder<Model.Value, NewPlaceholder>> {
         map { $0.asFetchableWithPlaceholder().mapPlaceholder(transform) }
     }
 }

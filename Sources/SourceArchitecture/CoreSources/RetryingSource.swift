@@ -1,8 +1,7 @@
 //
-//  RetryingSource.swift
 //  SourceArchitecture
 //
-//  Copyright (c) 2022 Daniel Hall
+//  Copyright (c) 2023 Daniel Hall
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -60,10 +59,10 @@ public enum ForwardErrorAfter {
 }
 
 /// A Source that retries using a specified RetryStrategy for as long as its Fetchable model is an .error
-private final class RetryingSource<Value>: SourceOf<Fetchable<Value>> {
+private final class RetryingSource<Value>: Source<Fetchable<Value>> {
 
     @ActionFromMethod(retry) var retryAction
-    @Source var fetchableValue: Fetchable<Value>
+    @Sourced var fetchableValue: Fetchable<Value>
 
     var interval: TimeInterval
     let maximumRetries: Int?
@@ -74,12 +73,12 @@ private final class RetryingSource<Value>: SourceOf<Fetchable<Value>> {
     var retryWorkItem: DispatchWorkItem?
     var forwardWorkItem: DispatchWorkItem?
 
-    lazy var initialModel = {
-        _fetchableValue.subscribe(self, method: RetryingSource.update)
-        return model
+    lazy var initialState = {
+        update(model: fetchableValue)
+        return state
     }()
 
-    init(_ source: Source<Fetchable<Value>>, retryStrategy: RetryStrategy, forwardErrorAfter: ForwardErrorAfter) {
+    init(_ source: AnySource<Fetchable<Value>>, retryStrategy: RetryStrategy, forwardErrorAfter: ForwardErrorAfter) {
         self.retryStrategy = retryStrategy
         self.forwardAfter = forwardErrorAfter
         switch retryStrategy {
@@ -96,7 +95,7 @@ private final class RetryingSource<Value>: SourceOf<Fetchable<Value>> {
             interval = strategy.retryInterval
             maximumRetries = nil
         }
-        _fetchableValue = source
+        _fetchableValue = .init(from: source, updating: RetryingSource.update)
     }
     
     func update(model: Fetchable<Value>) {
@@ -104,24 +103,24 @@ private final class RetryingSource<Value>: SourceOf<Fetchable<Value>> {
         case .fetching:
             retryWorkItem?.cancel()
             forwardWorkItem?.cancel()
-            self.model = model
+            self.state = model
         case .fetched:
             if shouldUseBackoff { interval = 1 }
             retries = 0
             retryWorkItem?.cancel()
             forwardWorkItem?.cancel()
-            self.model = model
+            self.state = model
         case .failure:
             if forwardWorkItem == nil {
                 let workItem = DispatchWorkItem { [weak self] in
                     guard let self = self, case .failure(let failure) = self.fetchableValue else {
                         return
                     }
-                    if case .failure = self.model {
+                    if case .failure = self.state {
                         return
                     }
                     let model = Fetchable<Value>.failure(.init(error: failure.error, failedAttempts: failure.failedAttempts, retry: self.retryAction))
-                    self.model = model
+                    self.state = model
                 }
                 self.forwardWorkItem = workItem
                 if case .timeInterval(let interval) = forwardAfter {
@@ -171,18 +170,18 @@ private final class RetryingSource<Value>: SourceOf<Fetchable<Value>> {
     }
 }
 
-public extension Source where Model: FetchableWithPlaceholderRepresentable & FetchableRepresentable {
+public extension AnySource where Model: FetchableWithPlaceholderRepresentable & FetchableRepresentable {
     /// Retries the request for a `Fetchable<Value>` using the specified strategy for as long as there is an error
-    func retrying(_ strategy: RetryStrategy, forwardErrorAfter: ForwardErrorAfter = .failedAttempts(3)) -> Source<FetchableWithPlaceholder<Model.Value, Model.Placeholder>> {
-        RetryingSource(map { $0.asFetchableWithPlaceholder().asFetchable() }, retryStrategy: strategy, forwardErrorAfter: forwardErrorAfter).eraseToSource().addingPlaceholder().mapFetchablePlaceholder {
-            self.model.asFetchableWithPlaceholder().placeholder
+    func retrying(_ strategy: RetryStrategy, forwardErrorAfter: ForwardErrorAfter = .failedAttempts(3)) -> AnySource<FetchableWithPlaceholder<Model.Value, Model.Placeholder>> {
+        RetryingSource(map { $0.asFetchableWithPlaceholder().asFetchable() }, retryStrategy: strategy, forwardErrorAfter: forwardErrorAfter).eraseToAnySource().addingPlaceholder().mapFetchablePlaceholder {
+            self.state.asFetchableWithPlaceholder().placeholder
         }
     }
 }
 
-public extension Source where Model: FetchableRepresentable {
+public extension AnySource where Model: FetchableRepresentable {
     /// Retries the request for a `Fetchable<Value>` using the specified strategy for as long as there is an error
-    @_disfavoredOverload func retrying(_ strategy: RetryStrategy, forwardErrorAfter: ForwardErrorAfter = .failedAttempts(3)) -> Source<Fetchable<Model.Value>> {
-        RetryingSource(map { $0.asFetchable() }, retryStrategy: strategy, forwardErrorAfter: forwardErrorAfter).eraseToSource()
+    @_disfavoredOverload func retrying(_ strategy: RetryStrategy, forwardErrorAfter: ForwardErrorAfter = .failedAttempts(3)) -> AnySource<Fetchable<Model.Value>> {
+        RetryingSource(map { $0.asFetchable() }, retryStrategy: strategy, forwardErrorAfter: forwardErrorAfter).eraseToAnySource()
     }
 }
